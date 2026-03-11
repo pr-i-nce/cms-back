@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SystemUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  email        String?
+  phone        String?
+  role         String?
+  status       String?
+  passwordHash String?  @map("password_hash")
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("users")
+}
+
+model Member {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  phone        String?
+  email        String?
+  gender       String?
+  department   String?
+  role         String?
+  status       String?
+  dateJoined   String?  @map("date_joined")
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("members")
+}
+
+model Department {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  description  String?
+  leader       String?
+  membersCount Int?     @map("members_count")
+  status       String?
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("departments")
+}
+
+model Committee {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  description  String?
+  status       String?
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("committees")
+}
+
+model Group {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  description  String?
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("groups")
+}
+
+model Role {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  description  String?
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("roles")
+}
+
+model Permission {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  description  String?
+  createdBy    String?  @map("created_by")
+  createdAt    String?  @map("created_at")
+  lastEditedBy String?  @map("last_edited_by")
+  lastEditedAt String?  @map("last_edited_at")
+  sentBy       String?  @map("sent_by")
+
+  @@map("permissions")
+}
+
+model GroupRole {
+  id      String @id @default(uuid()) @db.Uuid
+  groupId String @map("group_id")
+  roleId  String @map("role_id")
+
+  @@map("group_roles")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @db.Uuid
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  @@map("role_permissions")
+}
+
+model UserGroup {
+  id      String @id @default(uuid()) @db.Uuid
+  userId  String @map("user_id")
+  groupId String @map("group_id")
+
+  @@map("user_groups")
+}
+
+model DepartmentMember {
+  id           String @id @default(uuid()) @db.Uuid
+  departmentId String @map("department_id")
+  memberId     String @map("member_id")
+  role         String?
+
+  @@map("department_members")
+}
+
+model CommitteeMember {
+  id          String @id @default(uuid()) @db.Uuid
+  committeeId String @map("committee_id")
+  memberId    String @map("member_id")
+  role        String?
+
+  @@map("committee_members")
+}
+
+model Activity {
+  id      String @id @default(uuid()) @db.Uuid
+  action  String?
+  details String?
+  time    String?
+  type    String?
+
+  @@map("activities")
+}
+
+model SmsRecord {
+  id              String  @id @default(uuid()) @db.Uuid
+  message         String?
+  recipients      String?
+  recipientCount  Int?    @map("recipient_count")
+  date            String?
+  status          String?
+  recipientType   String? @map("recipient_type")
+  providerStatus  String? @map("provider_status")
+  providerCode    String? @map("provider_code")
+  providerMessage String? @map("provider_message")
+  providerResponse String? @map("provider_response") @db.Text
+  createdBy       String? @map("created_by")
+  createdAt       String? @map("created_at")
+  lastEditedBy    String? @map("last_edited_by")
+  lastEditedAt    String? @map("last_edited_at")
+  sentBy          String? @map("sent_by")
+
+  @@map("sms_records")
+}
+
+model LatencyLog {
+  id         String  @id @default(uuid()) @db.Uuid
+  source     String?
+  method     String?
+  path       String?
+  status     Int?
+  durationMs Int?    @map("duration_ms")
+  timestamp  String?
+
+  @@map("latency_logs")
+}
+
+model Branch {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String?
+  location     String?
+  address      String?
+  phone        String?
+  email        String?
+  status       String?
+  createdBy    String? @map("created_by")
+  createdAt    String? @map("created_at")
+  lastEditedBy String? @map("last_edited_by")
+  lastEditedAt String? @map("last_edited_at")
+  sentBy       String? @map("sent_by")
+
+  @@map("branches")
+}
+
+model BranchPastor {
+  id       String @id @default(uuid()) @db.Uuid
+  branchId String @map("branch_id")
+  memberId String @map("member_id")
+  role     String?
+
+  @@map("branch_pastors")
+}
