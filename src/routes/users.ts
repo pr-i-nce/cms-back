@@ -205,10 +205,6 @@ usersRouter.post(
         data: groupIds.map((groupId) => ({
           userId: user.id,
           groupId,
-          createdBy: actor,
-          createdAt: now,
-          lastEditedBy: actor,
-          lastEditedAt: now,
         })),
       });
       res.json(ok(sanitizeUser(user), "Created", buildMeta()));
@@ -232,10 +228,6 @@ usersRouter.post(
       data: groupIds.map((groupId) => ({
         userId: user.id,
         groupId,
-        createdBy: actor,
-        createdAt: now,
-        lastEditedBy: actor,
-        lastEditedAt: now,
       })),
     });
     res.json(ok(sanitizeUser(user), "Created", buildMeta()));
@@ -447,10 +439,6 @@ usersRouter.put(
         data: groupIds.map((groupId) => ({
           userId: id,
           groupId,
-          createdBy: actor,
-          createdAt: new Date().toISOString(),
-          lastEditedBy: actor,
-          lastEditedAt: new Date().toISOString(),
         })),
       });
     }
