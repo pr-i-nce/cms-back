@@ -39,6 +39,7 @@ const sendSchema = z.object({
   if (needsId.includes(data.recipientType) && !data.recipientId) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "recipientId is required for this recipientType" });
   }
+  
   if (data.recipientType === "selected" && (!data.recipientIds || data.recipientIds.length === 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "recipientIds is required for selected recipients" });
   }
