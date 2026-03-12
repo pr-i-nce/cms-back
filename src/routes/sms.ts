@@ -22,6 +22,7 @@ const recipientTypeEnum = z.enum([
   "all",
   "custom",
 ]);
+
 const categoryEnum = z.enum(["youth", "leaders", "new", "all"]);
 
 const sendSchema = z.object({
