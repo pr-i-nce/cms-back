@@ -31,7 +31,6 @@ jobs:
           cp -r prisma deploy_package/
           cp package.json deploy_package/
           cp package-lock.json deploy_package/
-          # This line creates the .env file from your GitHub Secret
           echo "${{ secrets.DOT_ENV }}" > deploy_package/.env
 
       - name: Deploy via FTP
@@ -40,7 +39,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT }}
+          port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
-          server-dir: ./
+          server-dir: ./cms.church/ 
           delete-removed: true
