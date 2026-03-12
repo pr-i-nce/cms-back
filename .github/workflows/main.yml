@@ -18,24 +18,22 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build & Prepare Modules
+      - name: Build Project
         run: |
           npm install
+          npx prisma generate
           npm run build
-          # Keep only production modules to speed up upload
-          rm -rf node_modules
-          npm install --production
 
       - name: Prepare Deployment Files
         run: |
           mkdir -p deploy_package/tmp
           cp -r dist deploy_package/
           cp -r prisma deploy_package/
-          cp -r node_modules deploy_package/
           cp package.json deploy_package/
           cp package-lock.json deploy_package/
           echo "${{ secrets.DOT_ENV }}" > deploy_package/.env
           touch deploy_package/tmp/restart.txt
+          # NOTE: We are NOT copying node_modules here to comply with CloudLinux rules
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -46,7 +44,10 @@ jobs:
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
           server-dir: ./DWH-CMS_BACK/
-          delete-removed: flase
+          # 'dangerous-clean-slate' replaces 'delete-removed' in v4.3.5
+          # Set to true if you want to wipe old files on the server
+          dangerous-clean-slate: false 
           exclude: |
             **/.git*
             **/.git*/**
+            node_modules/**
