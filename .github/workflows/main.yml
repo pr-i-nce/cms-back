@@ -46,9 +46,7 @@ jobs:
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
           server-dir: ./DWH-CMS_BACK/
-          delete-removed: true
-          # THIS IS THE MISSING KEY:
-          # We tell it to ONLY exclude .git files, allowing node_modules to pass
+          delete-removed: flase
           exclude: |
             **/.git*
             **/.git*/**
