@@ -41,6 +41,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
-          # Ensure this matches the path to your 'cms.church' folder relative to your FTP login root
-          server-dir: ./
+          server-dir: ./DWH-CMS_BACK/
           delete-removed: true
