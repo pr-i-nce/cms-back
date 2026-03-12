@@ -41,5 +41,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
-          server-dir: ./cms.church/ 
+          server-dir: ./ 
           delete-removed: true
