@@ -24,6 +24,7 @@ jobs:
       - name: Build project
         run: npm run build
 
+      # Install ONLY production modules to keep the upload lean
       - name: Prepare Production Modules
         run: |
           rm -rf node_modules
@@ -51,5 +52,6 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./deploy_package/
+          # Matches your established Application root
           server-dir: ./DWH-CMS_BACK/
           delete-removed: true
