@@ -9,6 +9,21 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import { listQuerySchema, parseSort } from "../utils/query.js";
 
+type DepartmentHeadRow = {
+  departmentId: string;
+  departmentName: string;
+  memberId: string;
+  memberName: string;
+  role: string | null;
+};
+
+type DepartmentAssignmentRow = {
+  departmentId: string;
+  departmentName: string;
+  role: string | null;
+  member: any;
+};
+
 export const departmentsRouter = Router();
 
 const DEPARTMENT_ROLES = env.departmentRoles;
@@ -175,7 +190,7 @@ departmentsRouter.get(
       departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
     );
     const memberById = new Map(members.map((m) => [m.id, m]));
-    const rows: any[] = [];
+    const rows: DepartmentHeadRow[] = [];
     const seen = new Set<string>();
     filteredAssignments.forEach((a) => {
       const dept = deptById.get(a.departmentId);
@@ -368,7 +383,7 @@ departmentsRouter.get(
     ]);
     const memberById = new Map(assignedMembers.map((m) => [m.id, m]));
 
-    const rows: any[] = [];
+    const rows: DepartmentAssignmentRow[] = [];
     const seen = new Set<string>();
     assignments.forEach((a) => {
       const member = memberById.get(a.memberId);
