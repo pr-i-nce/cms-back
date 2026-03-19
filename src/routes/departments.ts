@@ -73,6 +73,8 @@ const buildPagination = (page: number, pageSize: number, total: number) => ({
   totalPages: Math.max(1, Math.ceil(total / pageSize)),
 });
 
+const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
+
 departmentsRouter.get(
   "/",
   requireAuth,
@@ -149,38 +151,60 @@ departmentsRouter.get(
       return;
     }
     const scope = req.userId ? await resolveDepartmentScope(req.userId) : null;
+    const headRoleSet = new Set(headRoles.map((r) => normalize(r)));
     const assignments = await prisma.departmentMember.findMany({
-      where: {
-        role: { in: headRoles },
-        ...(scope ? { departmentId: { in: scope } } : {}),
-      },
+      where: scope ? { departmentId: { in: scope } } : {},
     });
-    if (!assignments.length) {
-      res.json(ok([], "OK", buildMeta()));
-      return;
-    }
-    const departmentIds = Array.from(new Set(assignments.map((a) => a.departmentId)));
-    const memberIds = Array.from(new Set(assignments.map((a) => a.memberId)));
-    const [departments, members] = await Promise.all([
-      prisma.department.findMany({ where: { id: { in: departmentIds } } }),
-      prisma.member.findMany({ where: { id: { in: memberIds } } }),
+    const filteredAssignments = assignments.filter((a) => headRoleSet.has(normalize(a.role)));
+    const departmentIds = Array.from(new Set(filteredAssignments.map((a) => a.departmentId)));
+    const memberIds = Array.from(new Set(filteredAssignments.map((a) => a.memberId)));
+    const [departments, members, memberHeads] = await Promise.all([
+      prisma.department.findMany({ where: departmentIds.length ? { id: { in: departmentIds } } : undefined }),
+      prisma.member.findMany({ where: memberIds.length ? { id: { in: memberIds } } : undefined }),
+      prisma.member.findMany({
+        where: {
+          department: { not: null },
+          OR: headRoles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
+        },
+      }),
     ]);
     const deptById = new Map(departments.map((d) => [d.id, d]));
+    const deptByName = new Map(
+      departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
+    );
     const memberById = new Map(members.map((m) => [m.id, m]));
-    const rows = assignments
-      .map((a) => {
-        const dept = deptById.get(a.departmentId);
-        const member = memberById.get(a.memberId);
-        if (!dept || !member) return null;
-        return {
-          departmentId: dept.id,
-          departmentName: dept.name,
-          memberId: member.id,
-          memberName: member.name,
-          role: a.role,
-        };
-      })
-      .filter(Boolean) as any[];
+    const rows: any[] = [];
+    const seen = new Set<string>();
+    filteredAssignments.forEach((a) => {
+      const dept = deptById.get(a.departmentId);
+      const member = memberById.get(a.memberId);
+      if (!dept || !member) return;
+      const key = `${dept.id}:${member.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        departmentId: dept.id,
+        departmentName: dept.name,
+        memberId: member.id,
+        memberName: member.name,
+        role: a.role,
+      });
+    });
+    memberHeads.forEach((member) => {
+      const dept = deptByName.get(normalize(member.department));
+      if (!dept) return;
+      if (scope && !scope.includes(dept.id)) return;
+      const key = `${dept.id}:${member.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        departmentId: dept.id,
+        departmentName: dept.name,
+        memberId: member.id,
+        memberName: member.name,
+        role: member.role,
+      });
+    });
     rows.sort((a, b) => (a.departmentName || "").localeCompare(b.departmentName || ""));
     res.json(ok(rows, "OK", buildMeta()));
   }
@@ -316,31 +340,52 @@ departmentsRouter.get(
         return;
       }
     }
+    const department = await prisma.department.findUnique({ where: { id } });
+    if (!department) {
+      res.status(404).json(fail("Not found", "404", "Department not found", buildMeta()));
+      return;
+    }
     const parsed = listQuerySchema.safeParse(req.query || {});
     if (!parsed.success) {
       res.status(400).json(fail("Invalid request", "400", "Invalid query params", buildMeta()));
       return;
     }
     const { page, pageSize } = parsed.data;
-    const q = parsed.data.q.toLowerCase();
-    const role = parsed.data.role.trim();
+    const q = normalize(parsed.data.q);
+    const role = normalize(parsed.data.role);
 
     const assignments = await prisma.departmentMember.findMany({ where: { departmentId: id } });
     const memberIds = assignments.map((a) => a.memberId);
-    const members = memberIds.length
-      ? await prisma.member.findMany({ where: { id: { in: memberIds } } })
-      : [];
-    const memberById = new Map(members.map((m) => [m.id, m]));
+    const [assignedMembers, deptMembers] = await Promise.all([
+      memberIds.length ? prisma.member.findMany({ where: { id: { in: memberIds } } }) : Promise.resolve([]),
+      department.name
+        ? prisma.member.findMany({
+          where: { department: { equals: department.name, mode: "insensitive" } },
+        })
+        : Promise.resolve([]),
+    ]);
+    const memberById = new Map(assignedMembers.map((m) => [m.id, m]));
 
-    const rows = assignments
-      .filter((a) => !role || a.role === role)
-      .map((a) => {
-        const member = memberById.get(a.memberId);
-        if (!member) return null;
-        if (q && !(member.name || "").toLowerCase().includes(q)) return null;
-        return { memberId: a.memberId, role: a.role, member };
-      })
-      .filter(Boolean) as any[];
+    const rows: any[] = [];
+    const seen = new Set<string>();
+    assignments.forEach((a) => {
+      const member = memberById.get(a.memberId);
+      if (!member) return;
+      const resolvedRole = normalize(a.role);
+      if (role && resolvedRole !== role) return;
+      if (q && !normalize(member.name).includes(q)) return;
+      if (seen.has(member.id)) return;
+      seen.add(member.id);
+      rows.push({ memberId: a.memberId, role: a.role, member });
+    });
+    deptMembers.forEach((member) => {
+      if (seen.has(member.id)) return;
+      const resolvedRole = normalize(member.role);
+      if (role && resolvedRole !== role) return;
+      if (q && !normalize(member.name).includes(q)) return;
+      seen.add(member.id);
+      rows.push({ memberId: member.id, role: member.role, member });
+    });
 
     const from = Math.min(rows.length, (page - 1) * pageSize);
     const to = Math.min(rows.length, from + pageSize);
@@ -425,21 +470,43 @@ departmentsRouter.get(
     ]);
     const memberById = new Map(members.map((m) => [m.id, m]));
     const deptById = new Map(departments.map((d) => [d.id, d]));
+    const deptByName = new Map(
+      departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
+    );
 
-    const rows = assignments
-      .map((a) => {
-        const member = memberById.get(a.memberId);
-        const department = deptById.get(a.departmentId);
-        if (!member || !department) return null;
-        if (q && !(member.name || "").toLowerCase().includes(q)) return null;
-        return {
-          departmentId: department.id,
-          departmentName: department.name,
-          role: a.role,
-          member,
-        };
-      })
-      .filter(Boolean) as any[];
+    const rows: any[] = [];
+    const seen = new Set<string>();
+    assignments.forEach((a) => {
+      const member = memberById.get(a.memberId);
+      const department = deptById.get(a.departmentId);
+      if (!member || !department) return;
+      if (q && !(member.name || "").toLowerCase().includes(q)) return;
+      const key = `${department.id}:${member.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        departmentId: department.id,
+        departmentName: department.name,
+        role: a.role,
+        member,
+      });
+    });
+    members.forEach((member) => {
+      if (!member.department) return;
+      const department = deptByName.get(normalize(member.department));
+      if (!department) return;
+      if (scope && !scope.includes(department.id)) return;
+      if (q && !(member.name || "").toLowerCase().includes(q)) return;
+      const key = `${department.id}:${member.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        departmentId: department.id,
+        departmentName: department.name,
+        role: member.role,
+        member,
+      });
+    });
 
     const from = Math.min(rows.length, (page - 1) * pageSize);
     const to = Math.min(rows.length, from + pageSize);

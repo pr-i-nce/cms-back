@@ -30,6 +30,7 @@ const sendSchema = z.object({
   recipientIds: z.array(z.string().uuid()).optional(),
   recipientCategory: categoryEnum.optional(),
   customNumber: z.string().max(500).optional(),
+  greeting: z.string().max(120).optional(),
   message: z.string().min(1).max(env.sms.messageMaxLength),
   personalize: z.boolean().optional(),
   sendMode: z.enum(["auto", "single", "bulk", "scheduled"]).optional(),

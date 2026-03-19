@@ -167,7 +167,7 @@ model Activity {
 model SmsRecord {
   id              String  @id @default(uuid()) @db.Uuid
   message         String?
-  recipients      String?
+  recipients      String? @db.Text
   recipientCount  Int?    @map("recipient_count")
   date            String?
   status          String?

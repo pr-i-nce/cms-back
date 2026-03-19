@@ -1,5 +1,6 @@
 import { prisma } from "../db/client.js";
 import { env } from "../config/env.js";
+import https from "https";
 
 export type SmsSendRequest = {
   recipientType: string;
@@ -7,6 +8,7 @@ export type SmsSendRequest = {
   recipientIds?: string[];
   recipientCategory?: string;
   customNumber?: string;
+  greeting?: string;
   message: string;
   personalize?: boolean;
   sendMode?: string;
@@ -159,11 +161,16 @@ const resolveRecipients = async (request: SmsSendRequest, senderId?: string): Pr
     return dedupe(members);
   }
   if (request.recipientType === "department" && request.recipientId) {
+    const department = await prisma.department.findUnique({ where: { id: request.recipientId } });
     const assignments = await prisma.departmentMember.findMany({ where: { departmentId: request.recipientId } });
     const memberIds = assignments.map((a) => a.memberId);
-    if (!memberIds.length) return [];
-    const members = await prisma.member.findMany({ where: { id: { in: memberIds } } });
-    return dedupe(members);
+    const [assignedMembers, deptMembers] = await Promise.all([
+      memberIds.length ? prisma.member.findMany({ where: { id: { in: memberIds } } }) : Promise.resolve([]),
+      department?.name
+        ? prisma.member.findMany({ where: { department: { equals: department.name, mode: "insensitive" } } })
+        : Promise.resolve([]),
+    ]);
+    return dedupe([...assignedMembers, ...deptMembers]);
   }
   if (request.recipientType === "committee" && request.recipientId) {
     const assignments = await prisma.committeeMember.findMany({ where: { committeeId: request.recipientId } });
@@ -195,9 +202,14 @@ const resolveRecipients = async (request: SmsSendRequest, senderId?: string): Pr
   return [];
 };
 
-const personalizeMessage = (base: string, name?: string | null, personalize?: boolean) => {
+const personalizeMessage = (base: string, name?: string | null, personalize?: boolean, greeting?: string | null) => {
   if (!personalize || !name) return base;
   const firstName = name.split(" ")[0] || name;
+  const prefix = (greeting || "").trim();
+  if (prefix) {
+    if (prefix.includes("{name}")) return `${prefix.replaceAll("{name}", firstName)}!\n${base}`.trim();
+    return `${prefix} ${firstName}.\n${base}`.trim();
+  }
   if (base.includes("{name}")) return base.replaceAll("{name}", firstName);
   return `Hi ${firstName}, ${base}`;
 };
@@ -217,35 +229,58 @@ const buildPayloads = (request: SmsSendRequest, recipients: Recipient[]) => {
     return payloads;
   }
   const seen = new Set<string>();
-  recipients.forEach((member) => {
-    const phone = normalizePhone(member.phone);
-    if (!phone) return;
-    if (seen.has(phone)) return;
-    seen.add(phone);
-    payloads.push({
-      mobile: phone,
-      message: personalizeMessage(request.message, member.name, request.personalize),
+    recipients.forEach((member) => {
+      const phone = normalizePhone(member.phone);
+      if (!phone) return;
+      if (seen.has(phone)) return;
+      seen.add(phone);
+      payloads.push({
+        mobile: phone,
+        message: personalizeMessage(request.message, member.name, request.personalize, request.greeting),
+      });
     });
-  });
   return payloads;
 };
 
 const postJson = async (url: string, body: any) => {
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
+  const payload = JSON.stringify(body);
+  return new Promise<any>((resolve) => {
     try {
-      return JSON.parse(text);
-    } catch {
-      return { raw: text };
+      const target = new URL(url);
+      const req = https.request(
+        {
+          protocol: target.protocol,
+          hostname: target.hostname,
+          port: target.port || 443,
+          path: `${target.pathname}${target.search}`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(payload),
+          },
+          agent: new https.Agent({ rejectUnauthorized: false }),
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            try {
+              resolve(JSON.parse(data));
+            } catch {
+              resolve({ raw: data });
+            }
+          });
+        }
+      );
+      req.on("error", (err) => resolve({ error: err instanceof Error ? err.message : "Fetch failed" }));
+      req.write(payload);
+      req.end();
+    } catch (err) {
+      resolve({ error: err instanceof Error ? err.message : "Fetch failed" });
     }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Fetch failed" };
-  }
+  });
 };
 
 const parseCelcomResponse = (response: any): CelcomResult => {
@@ -253,8 +288,8 @@ const parseCelcomResponse = (response: any): CelcomResult => {
   if (response?.responses && Array.isArray(response.responses) && response.responses.length) {
     return parseCelcomResponse(response.responses[0]);
   }
-  const code = response?.["response-code"] ?? response?.responseCode;
-  const message = response?.["response-description"] ?? response?.responseDescription;
+  const code = response?.["response-code"] ?? response?.responseCode ?? response?.["respose-code"];
+  const message = response?.["response-description"] ?? response?.responseDescription ?? response?.["respose-description"];
   const success = code === 200 || code === "200" || message === "OK";
   return { success, code: code?.toString(), message: message?.toString(), rawResponse };
 };
@@ -262,7 +297,9 @@ const parseCelcomResponse = (response: any): CelcomResult => {
 const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: string): Promise<CelcomResult> => {
   if (!payloads.length) return { success: false, code: "NO_RECIPIENTS", message: "No recipients" };
 
-  if (mode === "scheduled") {
+  const resolvedMode = mode === "auto" ? (payloads.length > 1 ? "bulk" : "single") : mode;
+
+  if (resolvedMode === "scheduled") {
     const results: CelcomResult[] = [];
     for (const payload of payloads) {
       const body = {
@@ -280,7 +317,7 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
     return results.find((r) => !r.success) || results[0];
   }
 
-  if (mode === "single" || payloads.length === 1) {
+  if (resolvedMode === "single" || payloads.length === 1) {
     const payload = payloads[0];
     const body = {
       apikey: env.celcom.apiKey,
@@ -294,16 +331,30 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
     return parseCelcomResponse(resp);
   }
 
-  const smslist = payloads.map((p, idx) => ({
-    partnerID: env.celcom.partnerId,
+  if (resolvedMode === "bulk") {
+    const smslist = payloads.map((p, idx) => ({
+      partnerID: env.celcom.partnerId,
+      apikey: env.celcom.apiKey,
+      pass_type: env.celcom.passType,
+      clientsmsid: Date.now() + idx,
+      mobile: p.mobile,
+      message: p.message,
+      shortcode: env.celcom.shortcode,
+    }));
+    const resp = await postJson(`${env.celcom.baseUrl}/sendbulk/`, { count: smslist.length, smslist });
+    return parseCelcomResponse(resp);
+  }
+
+  const fallback = payloads.map((p) => p.mobile).join(",");
+  const body = {
     apikey: env.celcom.apiKey,
-    pass_type: env.celcom.passType,
-    clientsmsid: Date.now() + idx,
-    mobile: p.mobile,
-    message: p.message,
+    partnerID: env.celcom.partnerId,
+    mobile: fallback,
+    message: payloads[0].message,
     shortcode: env.celcom.shortcode,
-  }));
-  const resp = await postJson(`${env.celcom.baseUrl}/sendbulk/`, { count: smslist.length, smslist });
+    pass_type: env.celcom.passType,
+  };
+  const resp = await postJson(`${env.celcom.baseUrl}/sendsms/`, body);
   return parseCelcomResponse(resp);
 };
 
@@ -316,17 +367,6 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
     throw new Error(`Too many recipients (max ${env.sms.maxRecipients})`);
   }
   const mode = request.sendMode || (payloads.length > 1 ? "bulk" : "single");
-  let result: CelcomResult;
-  try {
-    result = await sendToCelcom(payloads, mode, request.timeToSend);
-  } catch (err) {
-    result = {
-      success: false,
-      code: "NETWORK_ERROR",
-      message: err instanceof Error ? err.message : "Celcom request failed",
-    };
-  }
-
   const now = new Date().toISOString();
   const record = await prisma.smsRecord.create({
     data: {
@@ -335,11 +375,11 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
       recipients: payloads.map((p) => p.mobile).join(","),
       recipientCount: payloads.length,
       date: now,
-      status: result.success ? "Sent" : "Failed",
-      providerStatus: result.success ? "SUCCESS" : "FAILED",
-      providerCode: result.code,
-      providerMessage: result.message,
-      providerResponse: result.rawResponse,
+      status: "Pending",
+      providerStatus: "PENDING",
+      providerCode: null,
+      providerMessage: null,
+      providerResponse: null,
       createdBy: senderId,
       createdAt: now,
       lastEditedBy: senderId,
@@ -347,6 +387,34 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
       sentBy: senderId,
     },
   });
+  void sendToCelcom(payloads, mode, request.timeToSend)
+    .then((result) =>
+      prisma.smsRecord.update({
+        where: { id: record.id },
+        data: {
+          status: result.success ? "Sent" : "Failed",
+          providerStatus: result.success ? "SUCCESS" : "FAILED",
+          providerCode: result.code,
+          providerMessage: result.message,
+          providerResponse: result.rawResponse,
+          lastEditedBy: senderId,
+          lastEditedAt: new Date().toISOString(),
+        },
+      })
+    )
+    .catch((err) =>
+      prisma.smsRecord.update({
+        where: { id: record.id },
+        data: {
+          status: "Failed",
+          providerStatus: "FAILED",
+          providerCode: "NETWORK_ERROR",
+          providerMessage: err instanceof Error ? err.message : "Celcom request failed",
+          lastEditedBy: senderId,
+          lastEditedAt: new Date().toISOString(),
+        },
+      })
+    );
   return record;
 };
 

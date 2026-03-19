@@ -12,10 +12,12 @@ export const membersRouter = Router();
 
 const createMemberSchema = z.object({
   name: z.string().min(2),
-  phone: z.string().optional().nullable(),
+  phone: z.string().min(1),
   email: z.string().email().optional().nullable(),
-  gender: z.string().optional().nullable(),
-  status: z.enum(["Active", "Inactive"]).optional().nullable(),
+  gender: z.string().min(1),
+  department: z.string().min(1),
+  role: z.string().min(1),
+  status: z.enum(["Active", "Inactive"]),
 });
 
 const updateMemberSchema = z.object({
@@ -23,6 +25,8 @@ const updateMemberSchema = z.object({
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   gender: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
   status: z.enum(["Active", "Inactive"]).optional().nullable(),
 });
 
@@ -133,7 +137,7 @@ membersRouter.post(
       res.status(400).json(fail("Invalid request", "400", "Invalid member payload", buildMeta()));
       return;
     }
-    const { name, phone, email, gender, status } = parsed.data;
+    const { name, phone, email, gender, department, role, status } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phone);
     const duplicate = await findDuplicateMember(normalizedEmail, normalizedPhone);
@@ -148,6 +152,8 @@ membersRouter.post(
         phone: normalizedPhone,
         email: normalizedEmail,
         gender,
+        department,
+        role,
         status: status || "Active",
         dateJoined: now.toISOString().slice(0, 10),
         createdBy: actor,
@@ -171,7 +177,9 @@ membersRouter.get(
       return;
     }
     const pastors = await prisma.member.findMany({
-      where: { role: { in: roles } },
+      where: {
+        OR: roles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
+      },
       orderBy: { name: "asc" },
     });
     res.json(ok(pastors, "OK", buildMeta()));
@@ -222,7 +230,7 @@ membersRouter.put(
       return;
     }
     const data: any = {};
-    ["name", "phone", "email", "gender", "status"].forEach((key) => {
+    ["name", "phone", "email", "gender", "department", "role", "status"].forEach((key) => {
       if ((parsed.data as any)[key] !== undefined) data[key] = (parsed.data as any)[key];
     });
     if (data.email !== undefined) data.email = normalizedEmail;
