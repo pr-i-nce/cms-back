@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db/client.js";
+import type { Department, Member } from "@prisma/client";
 import { ok, fail } from "../utils/response.js";
 import { buildMeta } from "../utils/meta.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -18,10 +19,11 @@ type DepartmentHeadRow = {
 };
 
 type DepartmentAssignmentRow = {
-  departmentId: string;
-  departmentName: string;
+  departmentId?: string;
+  departmentName?: string;
   role: string | null;
   member: any;
+  memberId?: string;
 };
 
 export const departmentsRouter = Router();
@@ -173,23 +175,25 @@ departmentsRouter.get(
     const filteredAssignments = assignments.filter((a) => headRoleSet.has(normalize(a.role)));
     const departmentIds = Array.from(new Set(filteredAssignments.map((a) => a.departmentId)));
     const memberIds = Array.from(new Set(filteredAssignments.map((a) => a.memberId)));
-    const departments = await prisma.department.findMany(
-      departmentIds.length ? { where: { id: { in: departmentIds } } } : {}
-    );
-    const members = await prisma.member.findMany(
-      memberIds.length ? { where: { id: { in: memberIds } } } : {}
-    );
+    const departments = departmentIds.length
+      ? await prisma.department.findMany({ where: { id: { in: departmentIds } } })
+      : [];
+    const members = memberIds.length
+      ? await prisma.member.findMany({ where: { id: { in: memberIds } } })
+      : [];
     const memberHeads = await prisma.member.findMany({
       where: {
         department: { not: null },
         OR: headRoles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
       },
     });
-    const deptById = new Map(departments.map((d) => [d.id, d]));
-    const deptByName = new Map(
-      departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
+    const deptById = new Map<string, Department>(departments.map((d) => [d.id, d]));
+    const deptByName = new Map<string, Department>(
+      departments
+        .map((d): [string, Department] => [normalize(d.name ?? ""), d])
+        .filter(([name]) => name)
     );
-    const memberById = new Map(members.map((m) => [m.id, m]));
+    const memberById = new Map<string, Member>(members.map((m) => [m.id, m]));
     const rows: DepartmentHeadRow[] = [];
     const seen = new Set<string>();
     filteredAssignments.forEach((a) => {
@@ -201,9 +205,9 @@ departmentsRouter.get(
       seen.add(key);
       rows.push({
         departmentId: dept.id,
-        departmentName: dept.name,
+        departmentName: dept.name ?? "",
         memberId: member.id,
-        memberName: member.name,
+        memberName: member.name ?? "",
         role: a.role,
       });
     });
@@ -216,9 +220,9 @@ departmentsRouter.get(
       seen.add(key);
       rows.push({
         departmentId: dept.id,
-        departmentName: dept.name,
+        departmentName: dept.name ?? "",
         memberId: member.id,
-        memberName: member.name,
+        memberName: member.name ?? "",
         role: member.role,
       });
     });
@@ -484,12 +488,14 @@ departmentsRouter.get(
     const members = await prisma.member.findMany();
     const departments = await prisma.department.findMany();
     const memberById = new Map(members.map((m) => [m.id, m]));
-    const deptById = new Map(departments.map((d) => [d.id, d]));
-    const deptByName = new Map(
-      departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
+    const deptById = new Map<string, Department>(departments.map((d) => [d.id, d]));
+    const deptByName = new Map<string, Department>(
+      departments
+        .map((d): [string, Department] => [normalize(d.name ?? ""), d])
+        .filter(([name]) => name)
     );
 
-    const rows: any[] = [];
+    const rows: DepartmentAssignmentRow[] = [];
     const seen = new Set<string>();
     assignments.forEach((a) => {
       const member = memberById.get(a.memberId);
@@ -501,7 +507,7 @@ departmentsRouter.get(
       seen.add(key);
       rows.push({
         departmentId: department.id,
-        departmentName: department.name,
+        departmentName: department.name ?? "",
         role: a.role,
         member,
       });
@@ -517,7 +523,7 @@ departmentsRouter.get(
       seen.add(key);
       rows.push({
         departmentId: department.id,
-        departmentName: department.name,
+        departmentName: department.name ?? "",
         role: member.role,
         member,
       });
