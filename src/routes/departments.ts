@@ -158,16 +158,18 @@ departmentsRouter.get(
     const filteredAssignments = assignments.filter((a) => headRoleSet.has(normalize(a.role)));
     const departmentIds = Array.from(new Set(filteredAssignments.map((a) => a.departmentId)));
     const memberIds = Array.from(new Set(filteredAssignments.map((a) => a.memberId)));
-    const [departments, members, memberHeads] = await Promise.all([
-      prisma.department.findMany({ where: departmentIds.length ? { id: { in: departmentIds } } : undefined }),
-      prisma.member.findMany({ where: memberIds.length ? { id: { in: memberIds } } : undefined }),
-      prisma.member.findMany({
-        where: {
-          department: { not: null },
-          OR: headRoles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
-        },
-      }),
-    ]);
+    const departments = await prisma.department.findMany(
+      departmentIds.length ? { where: { id: { in: departmentIds } } } : {}
+    );
+    const members = await prisma.member.findMany(
+      memberIds.length ? { where: { id: { in: memberIds } } } : {}
+    );
+    const memberHeads = await prisma.member.findMany({
+      where: {
+        department: { not: null },
+        OR: headRoles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
+      },
+    });
     const deptById = new Map(departments.map((d) => [d.id, d]));
     const deptByName = new Map(
       departments.map((d) => [normalize(d.name), d]).filter(([name]) => name)
@@ -464,10 +466,8 @@ departmentsRouter.get(
     const assignments = await prisma.departmentMember.findMany({
       where: scope ? { departmentId: { in: scope } } : {},
     });
-    const [members, departments] = await Promise.all([
-      prisma.member.findMany(),
-      prisma.department.findMany(),
-    ]);
+    const members = await prisma.member.findMany();
+    const departments = await prisma.department.findMany();
     const memberById = new Map(members.map((m) => [m.id, m]));
     const deptById = new Map(departments.map((d) => [d.id, d]));
     const deptByName = new Map(
