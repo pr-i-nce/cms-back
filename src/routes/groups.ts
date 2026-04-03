@@ -45,10 +45,11 @@ groupsRouter.get(
   }
 );
 
+const groupCreateGuards = env.allowPublicGroupCreate ? [] : [requireAuth, requirePermission("GROUP_CREATE")];
+
 groupsRouter.post(
   "/",
-  requireAuth,
-  requirePermission("GROUP_CREATE"),
+  ...groupCreateGuards,
   async (req, res) => {
     const actor = (req as any).userId || "system";
     const parsed = createGroupSchema.safeParse(req.body);
