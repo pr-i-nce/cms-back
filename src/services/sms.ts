@@ -294,6 +294,25 @@ const parseCelcomResponse = (response: any): CelcomResult => {
   return { success, code: code?.toString(), message: message?.toString(), rawResponse };
 };
 
+const MAX_BULK_RECIPIENTS = 100;
+
+const combineCelcomResults = (results: CelcomResult[]): CelcomResult => {
+  const failed = results.find((r) => !r.success);
+  return {
+    success: !failed,
+    code: failed?.code ?? "200",
+    message: failed?.message ?? "OK",
+    rawResponse: JSON.stringify(
+      results.map((r) => ({
+        success: r.success,
+        code: r.code,
+        message: r.message,
+        rawResponse: r.rawResponse,
+      }))
+    ),
+  };
+};
+
 const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: string): Promise<CelcomResult> => {
   if (!payloads.length) return { success: false, code: "NO_RECIPIENTS", message: "No recipients" };
 
@@ -315,6 +334,18 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
       results.push(parseCelcomResponse(resp));
     }
     return results.find((r) => !r.success) || results[0];
+  }
+
+  if (resolvedMode === "bulk" && payloads.length > MAX_BULK_RECIPIENTS) {
+    const batches: SmsPayload[][] = [];
+    for (let i = 0; i < payloads.length; i += MAX_BULK_RECIPIENTS) {
+      batches.push(payloads.slice(i, i + MAX_BULK_RECIPIENTS));
+    }
+    const results: CelcomResult[] = [];
+    for (const batch of batches) {
+      results.push(await sendToCelcom(batch, "bulk", timeToSend));
+    }
+    return combineCelcomResults(results);
   }
 
   if (resolvedMode === "single" || payloads.length === 1) {

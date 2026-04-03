@@ -38,6 +38,7 @@ export const env = {
   security: {
     enableCsp: process.env.CSP_ENABLED ? process.env.CSP_ENABLED === "true" : true,
   },
+  allowPublicUserCreate: process.env.ALLOW_PUBLIC_USER_CREATE === "true",
   cookies: {
     secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : (process.env.NODE_ENV === "production"),
     sameSite: (process.env.COOKIE_SAMESITE || "lax") as "lax" | "strict" | "none",

@@ -166,7 +166,7 @@ model Activity {
 
 model SmsRecord {
   id              String  @id @default(uuid()) @db.Uuid
-  message         String?
+  message         String? .Text
   recipients      String? @db.Text
   recipientCount  Int?    @map("recipient_count")
   date            String?
@@ -174,7 +174,7 @@ model SmsRecord {
   recipientType   String? @map("recipient_type")
   providerStatus  String? @map("provider_status")
   providerCode    String? @map("provider_code")
-  providerMessage String? @map("provider_message")
+  providerMessage String? .Text @map("provider_message")
   providerResponse String? @map("provider_response") @db.Text
   createdBy       String? @map("created_by")
   createdAt       String? @map("created_at")

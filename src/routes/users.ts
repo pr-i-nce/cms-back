@@ -98,10 +98,11 @@ usersRouter.get(
   }
 );
 
+const userCreateGuards = env.allowPublicUserCreate ? [] : [requireAuth, requirePermission("USER_CREATE")];
+
 usersRouter.post(
   "/",
-  requireAuth,
-  requirePermission("USER_CREATE"),
+  ...userCreateGuards,
   async (req, res) => {
     const actor = (req as any).userId || "system";
     const parsed = createUserSchema.safeParse(req.body);
