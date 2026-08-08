@@ -140,8 +140,8 @@ app.use((req, res, next) => {
       return;
     }
     void prisma.$executeRaw`
-      insert into latency_logs (source, method, path, status, duration_ms, timestamp)
-      values ('backend', ${event.method}, ${event.path}, ${event.status}, ${event.durationMs}, ${event.timestamp})
+      insert into latency_logs (id, source, method, path, status, duration_ms, timestamp)
+      values (gen_random_uuid(), 'backend', ${event.method}, ${event.path}, ${event.status}, ${event.durationMs}, ${event.timestamp})
     `.catch(() => {});
   });
   next();
@@ -244,14 +244,14 @@ app.post("/api/metrics/ui-latency", requireAuth, async (req, res) => {
     return;
   }
   const values = parsed.data.items.map((item) =>
-    Prisma.sql`('ui', 'NAV', ${item.path}, 200, ${item.durationMs}, ${item.timestamp})`
+    Prisma.sql`(gen_random_uuid(), 'ui', 'NAV', ${item.path}, 200, ${item.durationMs}, ${item.timestamp})`
   );
   if (!values.length) {
     res.json(ok({ stored: 0 }));
     return;
   }
   await prisma.$executeRaw(
-    Prisma.sql`insert into latency_logs (source, method, path, status, duration_ms, timestamp) values ${Prisma.join(values)}`
+    Prisma.sql`insert into latency_logs (id, source, method, path, status, duration_ms, timestamp) values ${Prisma.join(values)}`
   );
   res.json(ok({ stored: values.length }));
 });
@@ -265,6 +265,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json(fail("Server error", "INTERNAL_ERROR", message));
 });
 
-app.listen(env.port, "0.0.0.0", () => {
+app.listen(env.port, "127.0.0.1", () => {
   console.log(`Node backend listening on ${env.port}`);
 });

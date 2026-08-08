@@ -90,7 +90,7 @@ branchesRouter.get(
     const rows = await prisma.$queryRawUnsafe<any[]>(
       `select b.*, coalesce(count(bp.branch_id),0)::int as "pastorsCount"
        from branches b
-       left join branch_pastors bp on bp.branch_id = b.id
+       left join branch_pastors bp on b.id::text = bp.branch_id
        ${whereSql}
        group by b.id
        order by b.${orderSql} ${orderDir}
@@ -113,8 +113,8 @@ branchesRouter.get(
       `select bp.branch_id as "branchId", b.name as "branchName", bp.role,
               m.id as "memberId", m.name, m.phone, m.email, m.role as "memberRole"
        from branch_pastors bp
-       join branches b on b.id = bp.branch_id
-       join members m on m.id = bp.member_id
+       join branches b on b.id::text = bp.branch_id
+       join members m on m.id::text = bp.member_id
        order by b.name asc, m.name asc`
     );
     const data = rows.map((row) => ({
@@ -159,7 +159,7 @@ branchesRouter.get(
   requirePermission("BRANCH_UPDATE"),
   async (req, res) => {
     const id = req.params.id;
-    const branchRows = await prisma.$queryRaw<any[]>`select * from branches where id = ${id} limit 1`;
+    const branchRows = await prisma.$queryRaw<any[]>`select * from branches where id = ${id}::uuid limit 1`;
     const branch = branchRows[0];
     if (!branch) {
       res.status(404).json(fail("Not found", "404", "Branch not found", buildMeta()));
@@ -169,7 +169,7 @@ branchesRouter.get(
       select bp.member_id as "memberId", bp.role,
              m.id, m.name, m.phone, m.email, m.role as "memberRole"
       from branch_pastors bp
-      join members m on m.id = bp.member_id
+      join members m on m.id::text = bp.member_id
       where bp.branch_id = ${id}
       order by m.name asc`;
     const pastors = pastorRows.map((row) => ({
@@ -215,7 +215,7 @@ branchesRouter.put(
       return;
     }
     const row = await prisma.$queryRaw<any[]>`
-      update branches set ${Prisma.join(updates, ", ")} where id = ${id} returning *`;
+      update branches set ${Prisma.join(updates, ", ")} where id = ${id}::uuid returning *`;
     if (!row[0]) {
       res.status(404).json(fail("Not found", "404", "Branch not found", buildMeta()));
       return;
@@ -233,7 +233,7 @@ branchesRouter.post(
     const id = req.params.id;
     const now = new Date().toISOString();
     const row = await prisma.$queryRaw<any[]>`
-      update branches set status = 'Inactive', last_edited_by = ${actor}, last_edited_at = ${now} where id = ${id} returning *`;
+      update branches set status = 'Inactive', last_edited_by = ${actor}, last_edited_at = ${now} where id = ${id}::uuid returning *`;
     if (!row[0]) {
       res.status(404).json(fail("Not found", "404", "Branch not found", buildMeta()));
       return;
@@ -252,7 +252,7 @@ branchesRouter.get(
       select bp.member_id as "memberId", bp.role,
              m.id, m.name, m.phone, m.email, m.role as "memberRole"
       from branch_pastors bp
-      join members m on m.id = bp.member_id
+      join members m on m.id::text = bp.member_id
       where bp.branch_id = ${id}
       order by m.name asc`;
     const data = rows.map((row) => ({

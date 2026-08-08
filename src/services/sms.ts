@@ -24,6 +24,8 @@ type CelcomResult = {
   rawResponse?: string;
 };
 
+const celcomBaseUrl = env.celcom.baseUrl.endsWith("/") ? env.celcom.baseUrl : `${env.celcom.baseUrl}/`;
+
 export const listSms = async (page: number, pageSize: number, q?: string, status?: string) => {
   const where: any = {};
   if (status) where.status = status;
@@ -98,7 +100,16 @@ export const segments = async () => {
 
 type Recipient = { id?: string; name?: string | null; phone?: string | null };
 
-const normalizePhone = (value?: string | null) => (value ? value.replace(/\s+/g, "").trim() : null);
+const normalizePhone = (value?: string | null) => {
+  if (!value) return null;
+  const digits = value.replace(/\s+/g, "").trim();
+  if (!digits) return null;
+  const normalized = digits.startsWith("+") ? digits.slice(1) : digits;
+  if (/^254\d{9}$/.test(normalized)) return normalized;
+  if (/^0\d{9}$/.test(normalized)) return `254${normalized.slice(1)}`;
+  if (/^7\d{8}$/.test(normalized)) return `254${normalized}`;
+  return normalized;
+};
 
 const isLeaderUser = async (userId: string) => {
   const groups = await prisma.userGroup.findMany({ where: { userId } });
@@ -242,8 +253,8 @@ const buildPayloads = (request: SmsSendRequest, recipients: Recipient[]) => {
   return payloads;
 };
 
-const postJson = async (url: string, body: any) => {
-  const payload = JSON.stringify(body);
+const requestJson = async (url: string, method: "GET" | "POST", body?: any) => {
+  const payload = body ? JSON.stringify(body) : "";
   return new Promise<any>((resolve) => {
     try {
       const target = new URL(url);
@@ -253,12 +264,10 @@ const postJson = async (url: string, body: any) => {
           hostname: target.hostname,
           port: target.port || 443,
           path: `${target.pathname}${target.search}`,
-          method: "POST",
+          method,
           headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(payload),
+            ...(method === "POST" ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
           },
-          agent: new https.Agent({ rejectUnauthorized: false }),
         },
         (res) => {
           let data = "";
@@ -275,7 +284,7 @@ const postJson = async (url: string, body: any) => {
         }
       );
       req.on("error", (err) => resolve({ error: err instanceof Error ? err.message : "Fetch failed" }));
-      req.write(payload);
+      if (method === "POST" && payload) req.write(payload);
       req.end();
     } catch (err) {
       resolve({ error: err instanceof Error ? err.message : "Fetch failed" });
@@ -321,16 +330,14 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
   if (resolvedMode === "scheduled") {
     const results: CelcomResult[] = [];
     for (const payload of payloads) {
-      const body = {
-        apikey: env.celcom.apiKey,
-        partnerID: env.celcom.partnerId,
-        mobile: payload.mobile,
-        message: payload.message,
-        shortcode: env.celcom.shortcode,
-        pass_type: env.celcom.passType,
-        timeToSend,
-      };
-      const resp = await postJson(`${env.celcom.baseUrl}/sendsms/`, body);
+      const url = new URL("sendsms/", celcomBaseUrl);
+      url.searchParams.set("apikey", env.celcom.apiKey);
+      url.searchParams.set("partnerID", env.celcom.partnerId);
+      url.searchParams.set("message", payload.message);
+      url.searchParams.set("shortcode", env.celcom.shortcode);
+      url.searchParams.set("mobile", payload.mobile);
+      if (timeToSend) url.searchParams.set("timeToSend", timeToSend);
+      const resp = await requestJson(url.toString(), "GET");
       results.push(parseCelcomResponse(resp));
     }
     return results.find((r) => !r.success) || results[0];
@@ -350,15 +357,13 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
 
   if (resolvedMode === "single" || payloads.length === 1) {
     const payload = payloads[0];
-    const body = {
-      apikey: env.celcom.apiKey,
-      partnerID: env.celcom.partnerId,
-      mobile: payload.mobile,
-      message: payload.message,
-      shortcode: env.celcom.shortcode,
-      pass_type: env.celcom.passType,
-    };
-    const resp = await postJson(`${env.celcom.baseUrl}/sendsms/`, body);
+    const url = new URL("sendsms/", celcomBaseUrl);
+    url.searchParams.set("apikey", env.celcom.apiKey);
+    url.searchParams.set("partnerID", env.celcom.partnerId);
+    url.searchParams.set("message", payload.message);
+    url.searchParams.set("shortcode", env.celcom.shortcode);
+    url.searchParams.set("mobile", payload.mobile);
+    const resp = await requestJson(url.toString(), "GET");
     return parseCelcomResponse(resp);
   }
 
@@ -372,7 +377,7 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
       message: p.message,
       shortcode: env.celcom.shortcode,
     }));
-    const resp = await postJson(`${env.celcom.baseUrl}/sendbulk/`, { count: smslist.length, smslist });
+    const resp = await requestJson(`${celcomBaseUrl}sendbulk/`, "POST", { count: smslist.length, smslist });
     return parseCelcomResponse(resp);
   }
 
@@ -385,7 +390,7 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
     shortcode: env.celcom.shortcode,
     pass_type: env.celcom.passType,
   };
-  const resp = await postJson(`${env.celcom.baseUrl}/sendsms/`, body);
+  const resp = await requestJson(`${celcomBaseUrl}sendsms/`, "POST", body);
   return parseCelcomResponse(resp);
 };
 
@@ -451,10 +456,10 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
 
 export const getBalance = async () => {
   const body = { partnerID: env.celcom.partnerId, apikey: env.celcom.apiKey };
-  return postJson(`${env.celcom.baseUrl}/getbalance/`, body);
+  return requestJson(`${celcomBaseUrl}getbalance/`, "POST", body);
 };
 
 export const getDeliveryReport = async (messageId: string) => {
   const body = { partnerID: env.celcom.partnerId, apikey: env.celcom.apiKey, messageID: messageId };
-  return postJson(`${env.celcom.baseUrl}/getdlr/`, body);
+  return requestJson(`${celcomBaseUrl}getdlr/`, "POST", body);
 };
