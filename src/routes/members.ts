@@ -7,16 +7,18 @@ import { requireAnyPermission, requirePermission } from "../middleware/permissio
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { listQuerySchema, parseSort } from "../utils/query.js";
+import { normalizeEmail, normalizePhone } from "../utils/identity.js";
+import { invalidateAuthStatus } from "../middleware/auth.js";
 
 export const membersRouter = Router();
 
 const createMemberSchema = z.object({
-  name: z.string().min(2),
-  phone: z.string().min(1),
+  name: z.string().trim().min(2),
+  phone: z.string().trim().min(1),
   email: z.string().email().optional().nullable(),
-  gender: z.string().min(1),
-  department: z.string().min(1),
-  role: z.string().min(1),
+  gender: z.string().trim().min(1),
+  department: z.string().trim().min(1),
+  role: z.string().trim().min(1),
   status: z.enum(["Active", "Inactive"]),
 });
 
@@ -36,9 +38,6 @@ const buildPagination = (page: number, pageSize: number, total: number) => ({
   total,
   totalPages: Math.max(1, Math.ceil(total / pageSize)),
 });
-
-const normalizeEmail = (value?: string | null) => (value ? value.trim().toLowerCase() : null);
-const normalizePhone = (value?: string | null) => (value ? value.replace(/\s+/g, "").trim() : null);
 
 const findDuplicateMember = async (email?: string | null, phone?: string | null, excludeId?: string) => {
   const or: any[] = [];
@@ -140,27 +139,44 @@ membersRouter.post(
     const { name, phone, email, gender, department, role, status } = parsed.data;
     const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      res.status(400).json(fail("Invalid request", "400", "A valid phone number is required", buildMeta()));
+      return;
+    }
+    const departmentRow = await prisma.department.findFirst({
+      where: { name: { equals: department.trim(), mode: "insensitive" } },
+    });
+    if (!departmentRow) {
+      res.status(400).json(fail("Invalid request", "400", "Select an existing department", buildMeta()));
+      return;
+    }
     const duplicate = await findDuplicateMember(normalizedEmail, normalizedPhone);
     if (duplicate) {
       res.status(409).json(fail("Conflict", "409", "Member with the same email or phone already exists", buildMeta()));
       return;
     }
     const now = new Date();
-    const member = await prisma.member.create({
-      data: {
-        name,
-        phone: normalizedPhone,
-        email: normalizedEmail,
-        gender,
-        department,
-        role,
-        status: status || "Active",
-        dateJoined: now.toISOString().slice(0, 10),
-        createdBy: actor,
-        createdAt: now.toISOString(),
-        lastEditedBy: actor,
-        lastEditedAt: now.toISOString(),
-      },
+    const member = await prisma.$transaction(async (tx) => {
+      const created = await tx.member.create({
+        data: {
+          name,
+          phone: normalizedPhone,
+          email: normalizedEmail,
+          gender,
+          department: departmentRow.name,
+          role,
+          status: status || "Active",
+          dateJoined: now.toISOString().slice(0, 10),
+          createdBy: actor,
+          createdAt: now.toISOString(),
+          lastEditedBy: actor,
+          lastEditedAt: now.toISOString(),
+        },
+      });
+      await tx.departmentMember.create({
+        data: { departmentId: departmentRow.id, memberId: created.id, role, isPrimary: true },
+      });
+      return created;
     });
     res.json(ok(member, "Created", buildMeta()));
   }
@@ -222,6 +238,16 @@ membersRouter.put(
       res.status(404).json(fail("Not found", "404", "Member not found", buildMeta()));
       return;
     }
+    const selectedDepartment = parsed.data.department?.trim();
+    const departmentRow = selectedDepartment
+      ? await prisma.department.findFirst({
+        where: { name: { equals: selectedDepartment, mode: "insensitive" } },
+      })
+      : null;
+    if (selectedDepartment && !departmentRow) {
+      res.status(400).json(fail("Invalid request", "400", "Select an existing department", buildMeta()));
+      return;
+    }
     const normalizedEmail = normalizeEmail(parsed.data.email ?? null);
     const normalizedPhone = normalizePhone(parsed.data.phone ?? null);
     const duplicate = await findDuplicateMember(normalizedEmail, normalizedPhone, id);
@@ -235,9 +261,47 @@ membersRouter.put(
     });
     if (data.email !== undefined) data.email = normalizedEmail;
     if (data.phone !== undefined) data.phone = normalizedPhone;
+    if (parsed.data.department !== undefined) data.department = departmentRow?.name ?? null;
     data.lastEditedBy = actor;
     data.lastEditedAt = new Date().toISOString();
-    const member = await prisma.member.update({ where: { id }, data });
+    const member = await prisma.$transaction(async (tx) => {
+      const updated = await tx.member.update({ where: { id }, data });
+      if (parsed.data.department !== undefined) {
+        await tx.departmentMember.updateMany({ where: { memberId: id, isPrimary: true }, data: { isPrimary: false } });
+        if (departmentRow) {
+          const assignment = await tx.departmentMember.findFirst({
+            where: { departmentId: departmentRow.id, memberId: id },
+          });
+          if (assignment) {
+            await tx.departmentMember.update({
+              where: { id: assignment.id },
+              data: { isPrimary: true, role: parsed.data.role ?? assignment.role },
+            });
+          } else {
+            await tx.departmentMember.create({
+              data: { departmentId: departmentRow.id, memberId: id, role: parsed.data.role ?? existing.role, isPrimary: true },
+            });
+          }
+        }
+      } else if (parsed.data.role !== undefined) {
+        await tx.departmentMember.updateMany({
+          where: { memberId: id, isPrimary: true },
+          data: { role: parsed.data.role },
+        });
+      }
+      if (parsed.data.status === "Inactive") {
+        const account = await tx.systemUser.findUnique({ where: { memberId: id }, select: { id: true } });
+        if (account) {
+          await tx.systemUser.update({ where: { id: account.id }, data: { status: "Inactive", lastEditedBy: actor, lastEditedAt: data.lastEditedAt } });
+          await tx.$executeRaw`
+            update refresh_tokens set revoked_at = ${data.lastEditedAt}, last_used_at = ${data.lastEditedAt}
+            where user_id = ${account.id}::uuid and revoked_at is null
+          `;
+          invalidateAuthStatus(account.id);
+        }
+      }
+      return updated;
+    });
     res.json(ok(member, "Updated", buildMeta()));
   }
 );
@@ -254,14 +318,25 @@ membersRouter.delete(
       res.status(404).json(fail("Not found", "404", "Member not found", buildMeta()));
       return;
     }
-    await prisma.member.update({
-      where: { id },
-      data: {
-        status: "Inactive",
-        lastEditedBy: actor,
-        lastEditedAt: new Date().toISOString(),
-      },
+    const now = new Date().toISOString();
+    const account = await prisma.systemUser.findUnique({ where: { memberId: id }, select: { id: true } });
+    await prisma.$transaction(async (tx) => {
+      await tx.member.update({
+        where: { id },
+        data: { status: "Inactive", lastEditedBy: actor, lastEditedAt: now },
+      });
+      if (account) {
+        await tx.systemUser.update({
+          where: { id: account.id },
+          data: { status: "Inactive", lastEditedBy: actor, lastEditedAt: now },
+        });
+        await tx.$executeRaw`
+          update refresh_tokens set revoked_at = ${now}, last_used_at = ${now}
+          where user_id = ${account.id}::uuid and revoked_at is null
+        `;
+      }
     });
+    if (account) invalidateAuthStatus(account.id);
     res.json(ok(null, "Deactivated", buildMeta()));
   }
 );

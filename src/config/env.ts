@@ -38,8 +38,9 @@ export const env = {
   security: {
     enableCsp: process.env.CSP_ENABLED ? process.env.CSP_ENABLED === "true" : true,
   },
-  allowPublicUserCreate: process.env.ALLOW_PUBLIC_USER_CREATE === "true",
-  allowPublicGroupCreate: process.env.ALLOW_PUBLIC_GROUP_CREATE === "true",
+  // Public bootstrap endpoints are only honored in non-production environments.
+  allowPublicUserCreate: process.env.NODE_ENV !== "production" && process.env.ALLOW_PUBLIC_USER_CREATE === "true",
+  allowPublicGroupCreate: process.env.NODE_ENV !== "production" && process.env.ALLOW_PUBLIC_GROUP_CREATE === "true",
   cookies: {
     secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : (process.env.NODE_ENV === "production"),
     sameSite: (process.env.COOKIE_SAMESITE || "lax") as "lax" | "strict" | "none",
@@ -95,5 +96,14 @@ export const env = {
     apiKey: process.env.CELCOM_API_KEY || "",
     shortcode: process.env.CELCOM_SHORTCODE || "",
     passType: process.env.CELCOM_PASS_TYPE || "plain",
+    timeoutMs: num(process.env.CELCOM_TIMEOUT_MS, 15_000),
   },
 };
+
+if (env.nodeEnv === "production") {
+  const unsafeSecrets = ["dev_access", "dev_refresh", "change_me_access", "change_me_refresh"];
+  if (!env.databaseUrl) throw new Error("DATABASE_URL must be configured in production");
+  if (unsafeSecrets.includes(env.jwtAccessSecret) || unsafeSecrets.includes(env.jwtRefreshSecret)) {
+    throw new Error("Production JWT secrets must be replaced with strong random values");
+  }
+}

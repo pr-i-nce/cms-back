@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/client.js";
 import { ok, fail } from "../utils/response.js";
 import { buildMeta } from "../utils/meta.js";
-import { requireAuth } from "../middleware/auth.js";
+import { invalidateAuthStatus, requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permission.js";
 import { z } from "zod";
 import { env } from "../config/env.js";
@@ -111,14 +111,15 @@ usersRouter.post(
       return;
     }
     const { name, email, phone, role, status, password, memberId, groupIds } = parsed.data;
+    const uniqueGroupIds = [...new Set(groupIds)];
     const normalizedEmail = normalizeEmail(email);
     const normalizedRole = (role || "").toLowerCase();
-    if (!groupIds.length) {
+    if (!uniqueGroupIds.length) {
       res.status(400).json(fail("Invalid request", "400", "User must be assigned to a group", buildMeta()));
       return;
     }
-    const groupRows = await prisma.group.findMany({ where: { id: { in: groupIds } } });
-    if (groupRows.length !== groupIds.length) {
+    const groupRows = await prisma.group.findMany({ where: { id: { in: uniqueGroupIds } } });
+    if (groupRows.length !== uniqueGroupIds.length) {
       res.status(400).json(fail("Invalid request", "400", "Invalid group assignment", buildMeta()));
       return;
     }
@@ -187,13 +188,38 @@ usersRouter.post(
     const passwordHash = password ? await bcrypt.hash(password, 10) : null;
     if (normalizedRole === "leader" || hasLeaderGroup) {
       const member = await prisma.member.findUnique({ where: { id: memberId! } });
-      const user = await prisma.systemUser.create({
-        data: {
+      const user = await prisma.$transaction(async (tx) => {
+        const created = await tx.systemUser.create({
+          data: {
           id: memberId!,
-          name: member?.name || name || "Leader",
-          email: normalizeEmail(member?.email) || normalizedEmail!,
-          phone: member?.phone || phone,
-          role: "Leader",
+          memberId: memberId!,
+            name: member?.name || name || "Leader",
+            email: normalizeEmail(member?.email) || normalizedEmail!,
+            phone: member?.phone || phone,
+            role: "Leader",
+            status: status || "Active",
+            passwordHash,
+            createdBy: actor,
+            createdAt: now,
+            lastEditedBy: actor,
+            lastEditedAt: now,
+          },
+        });
+        await tx.userGroup.createMany({
+          data: uniqueGroupIds.map((groupId) => ({ userId: created.id, groupId })),
+        });
+        return created;
+      });
+      res.json(ok(sanitizeUser(user), "Created", buildMeta()));
+      return;
+    }
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.systemUser.create({
+        data: {
+          name,
+          email: normalizedEmail,
+          phone,
+          role,
           status: status || "Active",
           passwordHash,
           createdBy: actor,
@@ -202,34 +228,10 @@ usersRouter.post(
           lastEditedAt: now,
         },
       });
-      await prisma.userGroup.createMany({
-        data: groupIds.map((groupId) => ({
-          userId: user.id,
-          groupId,
-        })),
+      await tx.userGroup.createMany({
+        data: uniqueGroupIds.map((groupId) => ({ userId: created.id, groupId })),
       });
-      res.json(ok(sanitizeUser(user), "Created", buildMeta()));
-      return;
-    }
-    const user = await prisma.systemUser.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        phone,
-        role,
-        status: status || "Active",
-        passwordHash,
-        createdBy: actor,
-        createdAt: now,
-        lastEditedBy: actor,
-        lastEditedAt: now,
-      },
-    });
-    await prisma.userGroup.createMany({
-      data: groupIds.map((groupId) => ({
-        userId: user.id,
-        groupId,
-      })),
+      return created;
     });
     res.json(ok(sanitizeUser(user), "Created", buildMeta()));
   }
@@ -249,10 +251,10 @@ usersRouter.get(
     const normalizedRole = (user.role || "").toLowerCase();
     if (normalizedRole === "leader") {
       const hasDeptHead = await prisma.departmentMember.findFirst({
-        where: { memberId: id, role: { in: env.departmentHeadRoles } },
+        where: { memberId: user.memberId || id, role: { in: env.departmentHeadRoles } },
       });
       const hasCommitteeChair = await prisma.committeeMember.findFirst({
-        where: { memberId: id, role: { in: env.committeeChairRoles } },
+        where: { memberId: user.memberId || id, role: { in: env.committeeChairRoles } },
       });
       if (!hasDeptHead && !hasCommitteeChair) {
         res.status(400).json(fail("Invalid request", "400", "User is not a department head or committee chair", buildMeta()));
@@ -332,14 +334,21 @@ usersRouter.put(
       }
       data.passwordHash = await bcrypt.hash(parsed.data.password, 10);
       const nowIso = new Date().toISOString();
-      await prisma.$executeRaw`
-        update refresh_tokens set revoked_at = ${nowIso}, last_used_at = ${nowIso}
-        where user_id = ${id}
-      `.catch(() => {});
+      const updated = await prisma.$transaction(async (tx) => {
+        const changed = await tx.systemUser.update({ where: { id }, data });
+        await tx.$executeRaw`
+          update refresh_tokens set revoked_at = ${nowIso}, last_used_at = ${nowIso}
+          where user_id = ${id}::uuid and revoked_at is null
+        `;
+        return changed;
+      });
+      res.json(ok(sanitizeUser(updated), "Updated", buildMeta()));
+      return;
     }
     data.lastEditedBy = actor;
     data.lastEditedAt = new Date().toISOString();
     const updated = await prisma.systemUser.update({ where: { id }, data });
+    if (data.status !== undefined) invalidateAuthStatus(id);
     res.json(ok(sanitizeUser(updated), "Updated", buildMeta()));
   }
 );
@@ -356,14 +365,19 @@ usersRouter.post(
       res.status(404).json(fail("Not found", "404", "User not found", buildMeta()));
       return;
     }
-    const updated = await prisma.systemUser.update({
-      where: { id },
-      data: {
-        status: "Inactive",
-        lastEditedBy: actor,
-        lastEditedAt: new Date().toISOString(),
-      },
+    const now = new Date().toISOString();
+    const updated = await prisma.$transaction(async (tx) => {
+      const deactivated = await tx.systemUser.update({
+        where: { id },
+        data: { status: "Inactive", lastEditedBy: actor, lastEditedAt: now },
+      });
+      await tx.$executeRaw`
+        update refresh_tokens set revoked_at = ${now}, last_used_at = ${now}
+        where user_id = ${id}::uuid and revoked_at is null
+      `;
+      return deactivated;
     });
+    invalidateAuthStatus(id);
     res.json(ok(sanitizeUser(updated), "Deactivated", buildMeta()));
   }
 );
@@ -372,24 +386,8 @@ usersRouter.post(
   "/:id/reset-password",
   requireAuth,
   requirePermission("USER_RESET_PASSWORD"),
-  async (req, res) => {
-    const actor = (req as any).userId || "system";
-    const id = req.params.id;
-    const user = await prisma.systemUser.findUnique({ where: { id } });
-    if (!user) {
-      res.status(404).json(fail("Not found", "404", "User not found", buildMeta()));
-      return;
-    }
-    const passwordHash = await bcrypt.hash("TempPassword123!", 10);
-    await prisma.systemUser.update({
-      where: { id },
-      data: {
-        passwordHash,
-        lastEditedBy: actor,
-        lastEditedAt: new Date().toISOString(),
-      },
-    });
-    res.json(ok(null, "Reset sent", buildMeta()));
+  async (_req, res) => {
+    res.status(503).json(fail("Unavailable", "503", "Password reset delivery is not configured; no password was changed", buildMeta()));
   }
 );
 
@@ -410,7 +408,7 @@ usersRouter.put(
       res.status(404).json(fail("Not found", "404", "User not found", buildMeta()));
       return;
     }
-    const groupIds: string[] = parsed.data.groupIds || [];
+    const groupIds: string[] = [...new Set(parsed.data.groupIds || [])];
     if (!groupIds.length) {
       res.status(400).json(fail("Invalid request", "400", "User must belong to at least one group", buildMeta()));
       return;
@@ -424,28 +422,28 @@ usersRouter.put(
     const hasLeaderGroup = groupNames.some((name) => name.includes("leader"));
     if (hasLeaderGroup) {
       const hasDeptHead = await prisma.departmentMember.findFirst({
-        where: { memberId: id, role: { in: env.departmentHeadRoles } },
+        where: { memberId: user.memberId || id, role: { in: env.departmentHeadRoles } },
       });
       const hasCommitteeChair = await prisma.committeeMember.findFirst({
-        where: { memberId: id, role: { in: env.committeeChairRoles } },
+        where: { memberId: user.memberId || id, role: { in: env.committeeChairRoles } },
       });
       if (!hasDeptHead && !hasCommitteeChair) {
         res.status(400).json(fail("Invalid request", "400", "User is not a department head or committee chair", buildMeta()));
         return;
       }
     }
-    await prisma.userGroup.deleteMany({ where: { userId: id } });
-    if (groupIds.length) {
-      await prisma.userGroup.createMany({
+    await prisma.$transaction(async (tx) => {
+      await tx.userGroup.deleteMany({ where: { userId: id } });
+      await tx.userGroup.createMany({
         data: groupIds.map((groupId) => ({
           userId: id,
           groupId,
         })),
       });
-    }
-    await prisma.systemUser.update({
-      where: { id },
-      data: { lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
+      await tx.systemUser.update({
+        where: { id },
+        data: { lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
+      });
     });
     res.json(ok(null, "Updated", buildMeta()));
   }

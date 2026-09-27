@@ -261,8 +261,12 @@ app.use((_req, res) => {
 });
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const message = err?.message || "Server error";
-  res.status(500).json(fail("Server error", "INTERNAL_ERROR", message));
+  if (err instanceof Prisma.PrismaClientKnownRequestError && ["P2002", "P2003"].includes(err.code)) {
+    res.status(409).json(fail("Conflict", "409", "This record conflicts with an existing relationship or unique value"));
+    return;
+  }
+  console.error("Unhandled request error", err);
+  res.status(500).json(fail("Server error", "INTERNAL_ERROR", "An unexpected error occurred"));
 });
 
 app.listen(env.port, "127.0.0.1", () => {

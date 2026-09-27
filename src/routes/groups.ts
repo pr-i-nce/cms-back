@@ -120,16 +120,21 @@ groupsRouter.put(
       res.status(404).json(fail("Not found", "404", "Group not found", buildMeta()));
       return;
     }
-    const roleIds: string[] = parsed.data.roleIds || [];
-    await prisma.groupRole.deleteMany({ where: { groupId: id } });
-    if (roleIds.length) {
-      await prisma.groupRole.createMany({
-        data: roleIds.map((roleId) => ({ groupId: id, roleId })),
-      });
+    const roleIds: string[] = [...new Set(parsed.data.roleIds || [])];
+    const roles = await prisma.role.findMany({ where: { id: { in: roleIds } } });
+    if (roles.length !== roleIds.length) {
+      res.status(400).json(fail("Invalid request", "400", "Invalid role assignment", buildMeta()));
+      return;
     }
-    await prisma.group.update({
-      where: { id },
-      data: { lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
+    await prisma.$transaction(async (tx) => {
+      await tx.groupRole.deleteMany({ where: { groupId: id } });
+      if (roleIds.length) {
+        await tx.groupRole.createMany({ data: roleIds.map((roleId) => ({ groupId: id, roleId })) });
+      }
+      await tx.group.update({
+        where: { id },
+        data: { lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
+      });
     });
     invalidateCache("groups:");
     res.json(ok(null, "Updated", buildMeta()));

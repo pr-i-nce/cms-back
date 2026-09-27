@@ -7,6 +7,7 @@ import { env } from "../config/env.js";
 export type AuthedRequest = Request & { userId?: string };
 
 const statusCache = new Map<string, { status: string | null; expiresAt: number }>();
+export const invalidateAuthStatus = (userId: string) => statusCache.delete(userId);
 const getStatus = async (userId: string) => {
   const cached = statusCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) return cached.status;

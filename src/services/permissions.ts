@@ -14,11 +14,20 @@ export const resolvePermissions = async (userId: string): Promise<string[]> => {
   const isSuperAdmin = names.some((name) => name.includes("super") && name.includes("admin"));
   if (isSuperAdmin) return allNames;
 
-  const isAdmin = names.some((name) => name === "admin" || (name.includes("admin") && !name.includes("super")));
-  if (isAdmin) {
-    return allNames.filter((name) => !name.startsWith("BRANCH_") && !name.startsWith("USER_"));
+  const groupRoles = await prisma.groupRole.findMany({ where: { groupId: { in: groupIds } } });
+  const roleIds = Array.from(new Set(groupRoles.map((link) => link.roleId)));
+  if (roleIds.length) {
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { roleId: { in: roleIds } },
+      include: { permission: true },
+    });
+    const configuredPermissions = Array.from(new Set(
+      rolePermissions.map((link) => link.permission.name || "").filter(Boolean),
+    ));
+    return configuredPermissions;
   }
 
+  // Keep the legacy leader baseline until all leader groups have explicit role grants.
   const isLeader = names.some((name) => name.includes("leader"));
   if (isLeader) {
     return [

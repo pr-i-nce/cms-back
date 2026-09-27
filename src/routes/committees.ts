@@ -27,10 +27,12 @@ const isLeaderUser = async (userId: string) => {
 const resolveCommitteeScope = async (userId: string) => {
   const isLeader = await isLeaderUser(userId);
   if (!isLeader) return null;
+  const user = await prisma.systemUser.findUnique({ where: { id: userId } });
+  const memberId = user?.memberId || userId;
   const chairRoles = env.committeeChairRoles;
   const assignments = await prisma.committeeMember.findMany({
     where: {
-      memberId: userId,
+      memberId,
       ...(chairRoles.length ? { role: { in: chairRoles } } : {}),
     },
   });
@@ -360,12 +362,12 @@ committeesRouter.post(
       res.status(404).json(fail("Not found", "404", "Committee or member not found", buildMeta()));
       return;
     }
-    const assignment = await prisma.committeeMember.create({
-      data: {
-        committeeId: id,
-        memberId,
-        role,
-      },
+    const assignment = await prisma.$transaction(async (tx) => {
+      const existing = await tx.committeeMember.findFirst({ where: { committeeId: id, memberId } });
+      if (existing) {
+        return tx.committeeMember.update({ where: { id: existing.id }, data: { role } });
+      }
+      return tx.committeeMember.create({ data: { committeeId: id, memberId, role } });
     });
     invalidateCache("committees:");
     res.json(ok(assignment, "Created", buildMeta()));
@@ -385,7 +387,11 @@ committeesRouter.delete(
         return;
       }
     }
-    await prisma.committeeMember.deleteMany({ where: { committeeId: id, memberId } });
+    const removed = await prisma.committeeMember.deleteMany({ where: { committeeId: id, memberId } });
+    if (!removed.count) {
+      res.status(404).json(fail("Not found", "404", "Committee member assignment not found", buildMeta()));
+      return;
+    }
     invalidateCache("committees:");
     res.json(ok(null, "Removed", buildMeta()));
   }

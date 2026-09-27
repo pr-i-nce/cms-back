@@ -1,6 +1,6 @@
 import { prisma } from "../db/client.js";
 import { env } from "../config/env.js";
-import https from "https";
+import { normalizePhone } from "../utils/identity.js";
 
 export type SmsSendRequest = {
   recipientType: string;
@@ -54,7 +54,7 @@ export const templates = () => ([
 ]);
 
 export const segments = async () => {
-  const members = await prisma.member.findMany();
+  const members = await prisma.member.findMany({ where: { status: "Active" } });
   const departments = await prisma.department.findMany();
   const assignments = await prisma.departmentMember.findMany();
 
@@ -100,17 +100,6 @@ export const segments = async () => {
 
 type Recipient = { id?: string; name?: string | null; phone?: string | null };
 
-const normalizePhone = (value?: string | null) => {
-  if (!value) return null;
-  const digits = value.replace(/\s+/g, "").trim();
-  if (!digits) return null;
-  const normalized = digits.startsWith("+") ? digits.slice(1) : digits;
-  if (/^254\d{9}$/.test(normalized)) return normalized;
-  if (/^0\d{9}$/.test(normalized)) return `254${normalized.slice(1)}`;
-  if (/^7\d{8}$/.test(normalized)) return `254${normalized}`;
-  return normalized;
-};
-
 const isLeaderUser = async (userId: string) => {
   const groups = await prisma.userGroup.findMany({ where: { userId } });
   if (!groups.length) return false;
@@ -120,18 +109,20 @@ const isLeaderUser = async (userId: string) => {
 };
 
 const resolveLeaderScopes = async (userId: string) => {
+  const user = await prisma.systemUser.findUnique({ where: { id: userId } });
+  const memberId = user?.memberId || userId;
   const deptRoles = env.departmentHeadRoles;
   const committeeRoles = env.committeeChairRoles;
   const [deptAssignments, committeeAssignments] = await Promise.all([
     prisma.departmentMember.findMany({
       where: {
-        memberId: userId,
+        memberId,
         ...(deptRoles.length ? { role: { in: deptRoles } } : {}),
       },
     }),
     prisma.committeeMember.findMany({
       where: {
-        memberId: userId,
+        memberId,
         ...(committeeRoles.length ? { role: { in: committeeRoles } } : {}),
       },
     }),
@@ -164,46 +155,45 @@ const resolveRecipients = async (request: SmsSendRequest, senderId?: string): Pr
   }
 
   if (request.recipientType === "individual" && request.recipientId) {
-    const member = await prisma.member.findUnique({ where: { id: request.recipientId } });
+    const member = await prisma.member.findFirst({ where: { id: request.recipientId, status: "Active" } });
     return member ? [member] : [];
   }
   if (request.recipientType === "selected" && request.recipientIds?.length) {
-    const members = await prisma.member.findMany({ where: { id: { in: request.recipientIds } } });
+    const members = await prisma.member.findMany({ where: { id: { in: request.recipientIds }, status: "Active" } });
     return dedupe(members);
   }
   if (request.recipientType === "department" && request.recipientId) {
-    const department = await prisma.department.findUnique({ where: { id: request.recipientId } });
+    const department = await prisma.department.findFirst({ where: { id: request.recipientId, status: "Active" } });
+    if (!department) return [];
     const assignments = await prisma.departmentMember.findMany({ where: { departmentId: request.recipientId } });
     const memberIds = assignments.map((a) => a.memberId);
-    const [assignedMembers, deptMembers] = await Promise.all([
-      memberIds.length ? prisma.member.findMany({ where: { id: { in: memberIds } } }) : Promise.resolve([]),
-      department?.name
-        ? prisma.member.findMany({ where: { department: { equals: department.name, mode: "insensitive" } } })
-        : Promise.resolve([]),
-    ]);
-    return dedupe([...assignedMembers, ...deptMembers]);
+    if (!memberIds.length) return [];
+    const members = await prisma.member.findMany({ where: { id: { in: memberIds }, status: "Active" } });
+    return dedupe(members);
   }
   if (request.recipientType === "committee" && request.recipientId) {
+    const committee = await prisma.committee.findFirst({ where: { id: request.recipientId, status: "Active" } });
+    if (!committee) return [];
     const assignments = await prisma.committeeMember.findMany({ where: { committeeId: request.recipientId } });
     const memberIds = assignments.map((a) => a.memberId);
     if (!memberIds.length) return [];
-    const members = await prisma.member.findMany({ where: { id: { in: memberIds } } });
+    const members = await prisma.member.findMany({ where: { id: { in: memberIds }, status: "Active" } });
     return dedupe(members);
   }
   if (request.recipientType === "category" && request.recipientCategory) {
     const segs = await segments();
     const match = segs.find((s) => s.key === request.recipientCategory);
     if (!match?.memberIds?.length) return [];
-    const members = await prisma.member.findMany({ where: { id: { in: match.memberIds } } });
+      const members = await prisma.member.findMany({ where: { id: { in: match.memberIds }, status: "Active" } });
     return dedupe(members);
   }
   if (request.recipientType === "pastors") {
     if (request.recipientIds?.length) {
-      const members = await prisma.member.findMany({ where: { id: { in: request.recipientIds } } });
+      const members = await prisma.member.findMany({ where: { id: { in: request.recipientIds }, status: "Active" } });
       return dedupe(members);
     }
     const roles = env.pastorRoles;
-    const members = await prisma.member.findMany({ where: { role: { in: roles } } });
+    const members = await prisma.member.findMany({ where: { role: { in: roles }, status: "Active" } });
     return dedupe(members);
   }
   if (request.recipientType === "all") {
@@ -228,7 +218,7 @@ const personalizeMessage = (base: string, name?: string | null, personalize?: bo
 const buildPayloads = (request: SmsSendRequest, recipients: Recipient[]) => {
   const payloads: SmsPayload[] = [];
   if (request.recipientType === "custom" && request.customNumber) {
-    const numbers = request.customNumber.split(/[\s,]+/).map((n) => n.trim()).filter(Boolean);
+    const numbers = request.customNumber.split(/[,;\n]+/).map((n) => n.trim()).filter(Boolean);
     const seen = new Set<string>();
     numbers.forEach((n) => {
       const normalized = normalizePhone(n);
@@ -253,54 +243,46 @@ const buildPayloads = (request: SmsSendRequest, recipients: Recipient[]) => {
   return payloads;
 };
 
-const requestJson = async (url: string, method: "GET" | "POST", body?: any) => {
-  const payload = body ? JSON.stringify(body) : "";
-  return new Promise<any>((resolve) => {
-    try {
-      const target = new URL(url);
-      const req = https.request(
-        {
-          protocol: target.protocol,
-          hostname: target.hostname,
-          port: target.port || 443,
-          path: `${target.pathname}${target.search}`,
-          method,
-          headers: {
-            ...(method === "POST" ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
-          },
-        },
-        (res) => {
-          let data = "";
-          res.on("data", (chunk) => {
-            data += chunk;
-          });
-          res.on("end", () => {
-            try {
-              resolve(JSON.parse(data));
-            } catch {
-              resolve({ raw: data });
-            }
-          });
-        }
-      );
-      req.on("error", (err) => resolve({ error: err instanceof Error ? err.message : "Fetch failed" }));
-      if (method === "POST" && payload) req.write(payload);
-      req.end();
-    } catch (err) {
-      resolve({ error: err instanceof Error ? err.message : "Fetch failed" });
-    }
+const requestJson = async (url: string, body: unknown) => {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(env.celcom.timeoutMs),
   });
+  const text = await response.text();
+  let parsed: any;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = { raw: text.slice(0, 2_000) };
+  }
+  if (!response.ok) {
+    throw new Error(`Celcom HTTP ${response.status}`);
+  }
+  return parsed;
 };
 
 const parseCelcomResponse = (response: any): CelcomResult => {
   const rawResponse = JSON.stringify(response);
-  if (response?.responses && Array.isArray(response.responses) && response.responses.length) {
-    return parseCelcomResponse(response.responses[0]);
-  }
-  const code = response?.["response-code"] ?? response?.responseCode ?? response?.["respose-code"];
-  const message = response?.["response-description"] ?? response?.responseDescription ?? response?.["respose-description"];
-  const success = code === 200 || code === "200" || message === "OK";
-  return { success, code: code?.toString(), message: message?.toString(), rawResponse };
+  const items = Array.isArray(response?.responses) ? response.responses : [response];
+  const parsed = items.map((item: any) => {
+    const code = item?.["response-code"] ?? item?.responseCode ?? item?.["respose-code"];
+    const message = item?.["response-description"] ?? item?.responseDescription ?? item?.["respose-description"];
+    return {
+      success: code === 200 || code === "200" || message === "OK",
+      code: code?.toString(),
+      message: message?.toString(),
+    };
+  });
+  const failure = parsed.find((item: CelcomResult) => !item.success);
+  const first = parsed[0];
+  return {
+    success: parsed.length > 0 && parsed.every((item: CelcomResult) => item.success),
+    code: failure?.code ?? first?.code,
+    message: failure?.message ?? first?.message,
+    rawResponse,
+  };
 };
 
 const MAX_BULK_RECIPIENTS = 100;
@@ -330,17 +312,9 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
   if (resolvedMode === "scheduled") {
     const results: CelcomResult[] = [];
     for (const payload of payloads) {
-      const url = new URL("sendsms/", celcomBaseUrl);
-      url.searchParams.set("apikey", env.celcom.apiKey);
-      url.searchParams.set("partnerID", env.celcom.partnerId);
-      url.searchParams.set("message", payload.message);
-      url.searchParams.set("shortcode", env.celcom.shortcode);
-      url.searchParams.set("mobile", payload.mobile);
-      if (timeToSend) url.searchParams.set("timeToSend", timeToSend);
-      const resp = await requestJson(url.toString(), "GET");
-      results.push(parseCelcomResponse(resp));
+      results.push(await sendSingleToCelcom(payload, timeToSend));
     }
-    return results.find((r) => !r.success) || results[0];
+    return combineCelcomResults(results);
   }
 
   if (resolvedMode === "bulk" && payloads.length > MAX_BULK_RECIPIENTS) {
@@ -356,15 +330,7 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
   }
 
   if (resolvedMode === "single" || payloads.length === 1) {
-    const payload = payloads[0];
-    const url = new URL("sendsms/", celcomBaseUrl);
-    url.searchParams.set("apikey", env.celcom.apiKey);
-    url.searchParams.set("partnerID", env.celcom.partnerId);
-    url.searchParams.set("message", payload.message);
-    url.searchParams.set("shortcode", env.celcom.shortcode);
-    url.searchParams.set("mobile", payload.mobile);
-    const resp = await requestJson(url.toString(), "GET");
-    return parseCelcomResponse(resp);
+    return sendSingleToCelcom(payloads[0], timeToSend);
   }
 
   if (resolvedMode === "bulk") {
@@ -377,7 +343,7 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
       message: p.message,
       shortcode: env.celcom.shortcode,
     }));
-    const resp = await requestJson(`${celcomBaseUrl}sendbulk/`, "POST", { count: smslist.length, smslist });
+    const resp = await requestJson(`${celcomBaseUrl}sendbulk/`, { count: smslist.length, smslist });
     return parseCelcomResponse(resp);
   }
 
@@ -390,8 +356,21 @@ const sendToCelcom = async (payloads: SmsPayload[], mode: string, timeToSend?: s
     shortcode: env.celcom.shortcode,
     pass_type: env.celcom.passType,
   };
-  const resp = await requestJson(`${celcomBaseUrl}sendsms/`, "POST", body);
+  const resp = await requestJson(`${celcomBaseUrl}sendsms/`, body);
   return parseCelcomResponse(resp);
+};
+
+const sendSingleToCelcom = async (payload: SmsPayload, timeToSend?: string): Promise<CelcomResult> => {
+  const body: Record<string, string> = {
+    apikey: env.celcom.apiKey,
+    partnerID: env.celcom.partnerId,
+    message: payload.message,
+    shortcode: env.celcom.shortcode,
+    mobile: payload.mobile,
+    pass_type: env.celcom.passType,
+  };
+  if (timeToSend) body.timeToSend = timeToSend;
+  return parseCelcomResponse(await requestJson(`${celcomBaseUrl}sendsms/`, body));
 };
 
 export const sendSms = async (request: SmsSendRequest, senderId: string) => {
@@ -399,10 +378,11 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
   const recipients = await resolveRecipients(request, senderId);
   if (!recipients.length && !request.customNumber) throw new Error("No recipients found");
   const payloads = buildPayloads(request, recipients);
+  if (!payloads.length) throw new Error("No recipients have a valid phone number");
   if (payloads.length > env.sms.maxRecipients) {
     throw new Error(`Too many recipients (max ${env.sms.maxRecipients})`);
   }
-  const mode = request.sendMode || (payloads.length > 1 ? "bulk" : "single");
+  const mode = request.timeToSend ? "scheduled" : request.sendMode || (payloads.length > 1 ? "bulk" : "single");
   const now = new Date().toISOString();
   const record = await prisma.smsRecord.create({
     data: {
@@ -423,43 +403,41 @@ export const sendSms = async (request: SmsSendRequest, senderId: string) => {
       sentBy: senderId,
     },
   });
-  void sendToCelcom(payloads, mode, request.timeToSend)
-    .then((result) =>
-      prisma.smsRecord.update({
-        where: { id: record.id },
-        data: {
-          status: result.success ? "Sent" : "Failed",
-          providerStatus: result.success ? "SUCCESS" : "FAILED",
-          providerCode: result.code,
-          providerMessage: result.message,
-          providerResponse: result.rawResponse,
-          lastEditedBy: senderId,
-          lastEditedAt: new Date().toISOString(),
-        },
-      })
-    )
-    .catch((err) =>
-      prisma.smsRecord.update({
-        where: { id: record.id },
-        data: {
-          status: "Failed",
-          providerStatus: "FAILED",
-          providerCode: "NETWORK_ERROR",
-          providerMessage: err instanceof Error ? err.message : "Celcom request failed",
-          lastEditedBy: senderId,
-          lastEditedAt: new Date().toISOString(),
-        },
-      })
-    );
-  return record;
+  try {
+    const result = await sendToCelcom(payloads, mode, request.timeToSend);
+    return await prisma.smsRecord.update({
+      where: { id: record.id },
+      data: {
+        status: result.success ? "Sent" : "Failed",
+        providerStatus: result.success ? "SUCCESS" : "FAILED",
+        providerCode: result.code,
+        providerMessage: result.message,
+        providerResponse: result.rawResponse,
+        lastEditedBy: senderId,
+        lastEditedAt: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    return prisma.smsRecord.update({
+      where: { id: record.id },
+      data: {
+        status: "Failed",
+        providerStatus: "FAILED",
+        providerCode: "NETWORK_ERROR",
+        providerMessage: err instanceof Error ? err.message : "Celcom request failed",
+        lastEditedBy: senderId,
+        lastEditedAt: new Date().toISOString(),
+      },
+    });
+  }
 };
 
 export const getBalance = async () => {
   const body = { partnerID: env.celcom.partnerId, apikey: env.celcom.apiKey };
-  return requestJson(`${celcomBaseUrl}getbalance/`, "POST", body);
+  return requestJson(`${celcomBaseUrl}getbalance/`, body);
 };
 
 export const getDeliveryReport = async (messageId: string) => {
   const body = { partnerID: env.celcom.partnerId, apikey: env.celcom.apiKey, messageID: messageId };
-  return requestJson(`${celcomBaseUrl}getdlr/`, "POST", body);
+  return requestJson(`${celcomBaseUrl}getdlr/`, body);
 };

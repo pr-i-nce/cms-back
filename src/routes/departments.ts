@@ -46,10 +46,12 @@ const resolveDepartmentScope = async (userId: string) => {
   if (!isLeader) {
     return null;
   }
+  const user = await prisma.systemUser.findUnique({ where: { id: userId } });
+  const memberId = user?.memberId || userId;
   const headRoles = env.departmentHeadRoles;
   const assignments = await prisma.departmentMember.findMany({
     where: {
-      memberId: userId,
+      memberId,
       ...(headRoles.length ? { role: { in: headRoles } } : {}),
     },
   });
@@ -70,7 +72,6 @@ const createDepartmentSchema = z.object({
 const updateDepartmentSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional().nullable(),
-  leader: z.string().optional().nullable(),
   status: z.enum(["Active", "Inactive"]).optional().nullable(),
 });
 
@@ -91,6 +92,30 @@ const buildPagination = (page: number, pageSize: number, total: number) => ({
 });
 
 const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
+
+const addDepartmentLeaders = async <T extends Department>(departments: T[]) => {
+  if (!departments.length) return departments.map((department) => ({ ...department, leader: null as string | null }));
+  const headRoles = new Set(env.departmentHeadRoles.map(normalize));
+  const assignments = await prisma.departmentMember.findMany({
+    where: { departmentId: { in: departments.map((department) => department.id) } },
+  });
+  const heads = assignments.filter((assignment) => headRoles.has(normalize(assignment.role)));
+  const memberIds = Array.from(new Set(heads.map((assignment) => assignment.memberId)));
+  const members = memberIds.length ? await prisma.member.findMany({ where: { id: { in: memberIds } } }) : [];
+  const memberById = new Map(members.map((member) => [member.id, member.name || ""]));
+  const leadersByDepartment = new Map<string, string[]>();
+  heads.forEach((assignment) => {
+    const name = memberById.get(assignment.memberId);
+    if (!name) return;
+    const names = leadersByDepartment.get(assignment.departmentId) || [];
+    if (!names.includes(name)) names.push(name);
+    leadersByDepartment.set(assignment.departmentId, names);
+  });
+  return departments.map((department) => ({
+    ...department,
+    leader: leadersByDepartment.get(department.id)?.join(", ") || null,
+  }));
+};
 
 departmentsRouter.get(
   "/",
@@ -138,7 +163,8 @@ departmentsRouter.get(
       _count: { departmentId: true },
     });
     const countMap = new Map(counts.map((c) => [c.departmentId, c._count.departmentId]));
-    const withCounts = items.map((dept) => ({
+    const withLeaders = await addDepartmentLeaders(items);
+    const withCounts = withLeaders.map((dept) => ({
       ...dept,
       membersCount: countMap.get(dept.id) ?? 0,
     }));
@@ -181,18 +207,7 @@ departmentsRouter.get(
     const members = memberIds.length
       ? await prisma.member.findMany({ where: { id: { in: memberIds } } })
       : [];
-    const memberHeads = await prisma.member.findMany({
-      where: {
-        department: { not: null },
-        OR: headRoles.map((role) => ({ role: { equals: role, mode: "insensitive" } })),
-      },
-    });
     const deptById = new Map<string, Department>(departments.map((d) => [d.id, d]));
-    const deptByName = new Map<string, Department>(
-      departments
-        .map((d): [string, Department] => [normalize(d.name ?? ""), d])
-        .filter(([name]) => name)
-    );
     const memberById = new Map<string, Member>(members.map((m) => [m.id, m]));
     const rows: DepartmentHeadRow[] = [];
     const seen = new Set<string>();
@@ -209,21 +224,6 @@ departmentsRouter.get(
         memberId: member.id,
         memberName: member.name ?? "",
         role: a.role,
-      });
-    });
-    memberHeads.forEach((member) => {
-      const dept = deptByName.get(normalize(member.department));
-      if (!dept) return;
-      if (scope && !scope.includes(dept.id)) return;
-      const key = `${dept.id}:${member.id}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      rows.push({
-        departmentId: dept.id,
-        departmentName: dept.name ?? "",
-        memberId: member.id,
-        memberName: member.name ?? "",
-        role: member.role,
       });
     });
     rows.sort((a, b) => (a.departmentName || "").localeCompare(b.departmentName || ""));
@@ -279,8 +279,11 @@ departmentsRouter.get(
       res.status(404).json(fail("Not found", "404", "Department not found", buildMeta()));
       return;
     }
-    const members = await prisma.departmentMember.findMany({ where: { departmentId: id } });
-    res.json(ok({ department, members }, "OK", buildMeta()));
+    const [members, enrichedDepartment] = await Promise.all([
+      prisma.departmentMember.findMany({ where: { departmentId: id } }),
+      addDepartmentLeaders([department]),
+    ]);
+    res.json(ok({ department: enrichedDepartment[0], members }, "OK", buildMeta()));
   }
 );
 
@@ -309,14 +312,15 @@ departmentsRouter.put(
       return;
     }
     const data: any = {};
-    ["name", "description", "leader", "status"].forEach((key) => {
+    ["name", "description", "status"].forEach((key) => {
       if ((parsed.data as any)[key] !== undefined) data[key] = (parsed.data as any)[key];
     });
     data.lastEditedBy = actor;
     data.lastEditedAt = new Date().toISOString();
     const updated = await prisma.department.update({ where: { id }, data });
+    const [enrichedDepartment] = await addDepartmentLeaders([updated]);
     invalidateCache("departments:");
-    res.json(ok(updated, "Updated", buildMeta()));
+    res.json(ok(enrichedDepartment, "Updated", buildMeta()));
   }
 );
 
@@ -377,14 +381,9 @@ departmentsRouter.get(
 
     const assignments = await prisma.departmentMember.findMany({ where: { departmentId: id } });
     const memberIds = assignments.map((a) => a.memberId);
-    const [assignedMembers, deptMembers] = await Promise.all([
-      memberIds.length ? prisma.member.findMany({ where: { id: { in: memberIds } } }) : Promise.resolve([]),
-      department.name
-        ? prisma.member.findMany({
-          where: { department: { equals: department.name, mode: "insensitive" } },
-        })
-        : Promise.resolve([]),
-    ]);
+    const assignedMembers = memberIds.length
+      ? await prisma.member.findMany({ where: { id: { in: memberIds } } })
+      : [];
     const memberById = new Map(assignedMembers.map((m) => [m.id, m]));
 
     const rows: DepartmentAssignmentRow[] = [];
@@ -398,14 +397,6 @@ departmentsRouter.get(
       if (seen.has(member.id)) return;
       seen.add(member.id);
       rows.push({ memberId: a.memberId, role: a.role, member });
-    });
-    deptMembers.forEach((member) => {
-      if (seen.has(member.id)) return;
-      const resolvedRole = normalize(member.role);
-      if (role && resolvedRole !== role) return;
-      if (q && !normalize(member.name).includes(q)) return;
-      seen.add(member.id);
-      rows.push({ memberId: member.id, role: member.role, member });
     });
 
     const from = Math.min(rows.length, (page - 1) * pageSize);
@@ -441,12 +432,12 @@ departmentsRouter.post(
       res.status(404).json(fail("Not found", "404", "Department or member not found", buildMeta()));
       return;
     }
-    const assignment = await prisma.departmentMember.create({
-      data: {
-        departmentId: id,
-        memberId,
-        role,
-      },
+    const assignment = await prisma.$transaction(async (tx) => {
+      const existing = await tx.departmentMember.findFirst({ where: { departmentId: id, memberId } });
+      if (existing) {
+        return tx.departmentMember.update({ where: { id: existing.id }, data: { role } });
+      }
+      return tx.departmentMember.create({ data: { departmentId: id, memberId, role } });
     });
     invalidateCache("departments:");
     res.json(ok(assignment, "Created", buildMeta()));
@@ -466,7 +457,11 @@ departmentsRouter.delete(
         return;
       }
     }
-    await prisma.departmentMember.deleteMany({ where: { departmentId: id, memberId } });
+    const removed = await prisma.departmentMember.deleteMany({ where: { departmentId: id, memberId } });
+    if (!removed.count) {
+      res.status(404).json(fail("Not found", "404", "Department member assignment not found", buildMeta()));
+      return;
+    }
     invalidateCache("departments:");
     res.json(ok(null, "Removed", buildMeta()));
   }
@@ -485,15 +480,11 @@ departmentsRouter.get(
     const assignments = await prisma.departmentMember.findMany({
       where: scope ? { departmentId: { in: scope } } : {},
     });
-    const members = await prisma.member.findMany();
     const departments = await prisma.department.findMany();
+    const memberIds = Array.from(new Set(assignments.map((a) => a.memberId)));
+    const members = memberIds.length ? await prisma.member.findMany({ where: { id: { in: memberIds } } }) : [];
     const memberById = new Map(members.map((m) => [m.id, m]));
     const deptById = new Map<string, Department>(departments.map((d) => [d.id, d]));
-    const deptByName = new Map<string, Department>(
-      departments
-        .map((d): [string, Department] => [normalize(d.name ?? ""), d])
-        .filter(([name]) => name)
-    );
 
     const rows: DepartmentAssignmentRow[] = [];
     const seen = new Set<string>();
@@ -509,22 +500,6 @@ departmentsRouter.get(
         departmentId: department.id,
         departmentName: department.name ?? "",
         role: a.role,
-        member,
-      });
-    });
-    members.forEach((member) => {
-      if (!member.department) return;
-      const department = deptByName.get(normalize(member.department));
-      if (!department) return;
-      if (scope && !scope.includes(department.id)) return;
-      if (q && !(member.name || "").toLowerCase().includes(q)) return;
-      const key = `${department.id}:${member.id}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      rows.push({
-        departmentId: department.id,
-        departmentName: department.name ?? "",
-        role: member.role,
         member,
       });
     });

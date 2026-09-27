@@ -8,24 +8,28 @@ datasource db {
 }
 
 model SystemUser {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String?
-  email        String?
-  phone        String?
-  role         String?
-  status       String?
-  passwordHash String?  @map("password_hash")
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String?
+  phone         String?
+  role          String?
+  status        String?
+  passwordHash  String?        @map("password_hash")
+  createdBy     String?        @map("created_by")
+  createdAt     String?        @map("created_at")
+  lastEditedBy  String?        @map("last_edited_by")
+  lastEditedAt  String?        @map("last_edited_at")
+  sentBy        String?        @map("sent_by")
+  memberId      String?        @unique @map("member_id") @db.Uuid
+  member        Member?        @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  groups        UserGroup[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
 }
 
 model Member {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String             @id @default(uuid()) @db.Uuid
   name         String?
   phone        String?
   email        String?
@@ -33,129 +37,171 @@ model Member {
   department   String?
   role         String?
   status       String?
-  dateJoined   String?  @map("date_joined")
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  dateJoined   String?            @map("date_joined")
+  createdBy    String?            @map("created_by")
+  createdAt    String?            @map("created_at")
+  lastEditedBy String?            @map("last_edited_by")
+  lastEditedAt String?            @map("last_edited_at")
+  sentBy       String?            @map("sent_by")
+  account      SystemUser?
+  departments  DepartmentMember[]
+  committees   CommitteeMember[]
+  branches     BranchPastor[]
 
   @@map("members")
 }
 
 model Department {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String             @id @default(uuid()) @db.Uuid
   name         String?
   description  String?
   leader       String?
-  membersCount Int?     @map("members_count")
+  membersCount Int?               @map("members_count")
   status       String?
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  createdBy    String?            @map("created_by")
+  createdAt    String?            @map("created_at")
+  lastEditedBy String?            @map("last_edited_by")
+  lastEditedAt String?            @map("last_edited_at")
+  sentBy       String?            @map("sent_by")
+  members      DepartmentMember[]
 
   @@map("departments")
 }
 
 model Committee {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String            @id @default(uuid()) @db.Uuid
   name         String?
   description  String?
   status       String?
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  createdBy    String?           @map("created_by")
+  createdAt    String?           @map("created_at")
+  lastEditedBy String?           @map("last_edited_by")
+  lastEditedAt String?           @map("last_edited_at")
+  sentBy       String?           @map("sent_by")
+  members      CommitteeMember[]
 
   @@map("committees")
 }
 
 model Group {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String      @id @default(uuid()) @db.Uuid
   name         String?
   description  String?
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  createdBy    String?     @map("created_by")
+  createdAt    String?     @map("created_at")
+  lastEditedBy String?     @map("last_edited_by")
+  lastEditedAt String?     @map("last_edited_at")
+  sentBy       String?     @map("sent_by")
+  users        UserGroup[]
+  roles        GroupRole[]
 
   @@map("groups")
 }
 
 model Role {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String           @id @default(uuid()) @db.Uuid
   name         String?
   description  String?
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  createdBy    String?          @map("created_by")
+  createdAt    String?          @map("created_at")
+  lastEditedBy String?          @map("last_edited_by")
+  lastEditedAt String?          @map("last_edited_at")
+  sentBy       String?          @map("sent_by")
+  groups       GroupRole[]
+  permissions  RolePermission[]
 
   @@map("roles")
 }
 
 model Permission {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String           @id @default(uuid()) @db.Uuid
   name         String?
   description  String?
-  createdBy    String?  @map("created_by")
-  createdAt    String?  @map("created_at")
-  lastEditedBy String?  @map("last_edited_by")
-  lastEditedAt String?  @map("last_edited_at")
-  sentBy       String?  @map("sent_by")
+  createdBy    String?          @map("created_by")
+  createdAt    String?          @map("created_at")
+  lastEditedBy String?          @map("last_edited_by")
+  lastEditedAt String?          @map("last_edited_at")
+  sentBy       String?          @map("sent_by")
+  roles        RolePermission[]
 
   @@map("permissions")
 }
 
 model GroupRole {
   id      String @id @default(uuid()) @db.Uuid
-  groupId String @map("group_id")
-  roleId  String @map("role_id")
+  groupId String @map("group_id") @db.Uuid
+  roleId  String @map("role_id") @db.Uuid
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
+  @@unique([groupId, roleId], map: "group_roles_group_role_key")
   @@map("group_roles")
 }
 
 model RolePermission {
-  id           String @id @default(uuid()) @db.Uuid
-  roleId       String @map("role_id")
-  permissionId String @map("permission_id")
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
+  @@unique([roleId, permissionId], map: "role_permissions_role_permission_key")
   @@map("role_permissions")
 }
 
 model UserGroup {
-  id      String @id @default(uuid()) @db.Uuid
-  userId  String @map("user_id")
-  groupId String @map("group_id")
+  id      String     @id @default(uuid()) @db.Uuid
+  userId  String     @map("user_id") @db.Uuid
+  groupId String     @map("group_id") @db.Uuid
+  user    SystemUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, groupId], map: "user_groups_user_group_key")
   @@map("user_groups")
 }
 
-model DepartmentMember {
-  id           String @id @default(uuid()) @db.Uuid
-  departmentId String @map("department_id")
-  memberId     String @map("member_id")
-  role         String?
+model RefreshToken {
+  id         String     @id @default(uuid()) @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  tokenHash  String     @unique @map("token_hash")
+  createdAt  String     @map("created_at")
+  expiresAt  String     @map("expires_at")
+  revokedAt  String?    @map("revoked_at")
+  replacedBy String?    @map("replaced_by")
+  lastUsedAt String?    @map("last_used_at")
+  user       SystemUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model DepartmentMember {
+  id           String     @id @default(uuid()) @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  memberId     String     @map("member_id") @db.Uuid
+  role         String?
+  isPrimary    Boolean    @default(false) @map("is_primary")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  member       Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, memberId], map: "department_members_department_member_key")
   @@map("department_members")
 }
 
 model CommitteeMember {
-  id          String @id @default(uuid()) @db.Uuid
-  committeeId String @map("committee_id")
-  memberId    String @map("member_id")
+  id          String    @id @default(uuid()) @db.Uuid
+  committeeId String    @map("committee_id") @db.Uuid
+  memberId    String    @map("member_id") @db.Uuid
   role        String?
+  committee   Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@unique([committeeId, memberId], map: "committee_members_committee_member_key")
   @@map("committee_members")
 }
 
 model Activity {
-  id      String @id @default(uuid()) @db.Uuid
+  id      String  @id @default(uuid()) @db.Uuid
   action  String?
   details String?
   time    String?
@@ -165,22 +211,22 @@ model Activity {
 }
 
 model SmsRecord {
-  id              String  @id @default(uuid()) @db.Uuid
-  message         String? @db.Text
-  recipients      String? @db.Text
-  recipientCount  Int?    @map("recipient_count")
-  date            String?
-  status          String?
-  recipientType   String? @map("recipient_type")
-  providerStatus  String? @map("provider_status")
-  providerCode    String? @map("provider_code")
-  providerMessage String? @db.Text @map("provider_message")
+  id               String  @id @default(uuid()) @db.Uuid
+  message          String? @db.Text
+  recipients       String? @db.Text
+  recipientCount   Int?    @map("recipient_count")
+  date             String?
+  status           String?
+  recipientType    String? @map("recipient_type")
+  providerStatus   String? @map("provider_status")
+  providerCode     String? @map("provider_code")
+  providerMessage  String? @map("provider_message") @db.Text
   providerResponse String? @map("provider_response") @db.Text
-  createdBy       String? @map("created_by")
-  createdAt       String? @map("created_at")
-  lastEditedBy    String? @map("last_edited_by")
-  lastEditedAt    String? @map("last_edited_at")
-  sentBy          String? @map("sent_by")
+  createdBy        String? @map("created_by")
+  createdAt        String? @map("created_at")
+  lastEditedBy     String? @map("last_edited_by")
+  lastEditedAt     String? @map("last_edited_at")
+  sentBy           String? @map("sent_by")
 
   @@map("sms_records")
 }
@@ -198,27 +244,31 @@ model LatencyLog {
 }
 
 model Branch {
-  id           String  @id @default(uuid()) @db.Uuid
+  id           String         @id @default(uuid()) @db.Uuid
   name         String?
   location     String?
   address      String?
   phone        String?
   email        String?
   status       String?
-  createdBy    String? @map("created_by")
-  createdAt    String? @map("created_at")
-  lastEditedBy String? @map("last_edited_by")
-  lastEditedAt String? @map("last_edited_at")
-  sentBy       String? @map("sent_by")
+  createdBy    String?        @map("created_by")
+  createdAt    String?        @map("created_at")
+  lastEditedBy String?        @map("last_edited_by")
+  lastEditedAt String?        @map("last_edited_at")
+  sentBy       String?        @map("sent_by")
+  pastors      BranchPastor[]
 
   @@map("branches")
 }
 
 model BranchPastor {
-  id       String @id @default(uuid()) @db.Uuid
-  branchId String @map("branch_id")
-  memberId String @map("member_id")
+  id       String  @id @default(uuid()) @db.Uuid
+  branchId String  @map("branch_id") @db.Uuid
+  memberId String  @map("member_id") @db.Uuid
   role     String?
+  branch   Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  member   Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@unique([branchId, memberId], map: "branch_pastors_branch_member_key")
   @@map("branch_pastors")
 }

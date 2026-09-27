@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="${BACKEND_DIR:-$SCRIPT_DIR}"
-ENV_FILE="${ENV_FILE:-$BACKEND_DIR/.env.prod}"
+ENV_FILE="${ENV_FILE:-$BACKEND_DIR/.env}"
 BACKEND_URL="${BACKEND_URL:-http://localhost:8081}"
 
 NAME="Prince mumo"

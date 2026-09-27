@@ -9,6 +9,12 @@
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:start": "bash scripts/start_local_postgres.sh",
+    "db:restore-local": "python3 scripts/restore_local_dump.py",
+    "import:church-members": "tsx scripts/import_church_members.ts",
+    "seed:neon:members": "tsx scripts/seed_neon_members.ts",
     "postinstall": "prisma generate" 
   },
   "dependencies": {

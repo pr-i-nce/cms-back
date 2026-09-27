@@ -172,7 +172,7 @@ authRouter.post("/login", async (req, res) => {
   const refreshHash = hashToken(refreshToken);
   await prisma.$executeRaw`
     insert into refresh_tokens (user_id, token_hash, created_at, expires_at)
-    values (${user.id}, ${refreshHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
+    values (${user.id}::uuid, ${refreshHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
   `;
   res.cookie("access_token", accessToken, accessCookieOptions);
   res.cookie("refresh_token", refreshToken, refreshCookieOptions);
@@ -219,7 +219,7 @@ authRouter.post("/refresh", async (req, res) => {
       const now = new Date().toISOString();
       await prisma.$executeRaw`
         update refresh_tokens set revoked_at = ${now}, last_used_at = ${now}
-        where user_id = ${row.user_id}
+        where user_id = ${row.user_id}::uuid
       `;
       await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_REUSE_DETECTED", req });
       res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
@@ -243,7 +243,7 @@ authRouter.post("/refresh", async (req, res) => {
       `;
       await tx.$executeRaw`
         insert into refresh_tokens (user_id, token_hash, created_at, expires_at)
-        values (${payload.sub}, ${newHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
+        values (${payload.sub}::uuid, ${newHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
       `;
     });
     res.cookie("access_token", accessToken, accessCookieOptions);

@@ -88,9 +88,10 @@ branchesRouter.get(
     const orderDir = (orderBy as any)[orderKey];
     const orderSql = orderKey === "createdAt" ? "created_at" : orderKey;
     const rows = await prisma.$queryRawUnsafe<any[]>(
-      `select b.*, coalesce(count(bp.branch_id),0)::int as "pastorsCount"
+      `select b.*, coalesce(count(m.id),0)::int as "pastorsCount"
        from branches b
-       left join branch_pastors bp on b.id::text = bp.branch_id
+       left join branch_pastors bp on b.id = bp.branch_id
+       left join members m on m.id = bp.member_id and m.status = 'Active'
        ${whereSql}
        group by b.id
        order by b.${orderSql} ${orderDir}
@@ -113,8 +114,9 @@ branchesRouter.get(
       `select bp.branch_id as "branchId", b.name as "branchName", bp.role,
               m.id as "memberId", m.name, m.phone, m.email, m.role as "memberRole"
        from branch_pastors bp
-       join branches b on b.id::text = bp.branch_id
-       join members m on m.id::text = bp.member_id
+       join branches b on b.id = bp.branch_id
+       join members m on m.id = bp.member_id
+       where m.status = 'Active'
        order by b.name asc, m.name asc`
     );
     const data = rows.map((row) => ({
@@ -169,8 +171,9 @@ branchesRouter.get(
       select bp.member_id as "memberId", bp.role,
              m.id, m.name, m.phone, m.email, m.role as "memberRole"
       from branch_pastors bp
-      join members m on m.id::text = bp.member_id
-      where bp.branch_id = ${id}
+      join members m on m.id = bp.member_id
+      where bp.branch_id = ${id}::uuid
+        and m.status = 'Active'
       order by m.name asc`;
     const pastors = pastorRows.map((row) => ({
       memberId: row.memberId,
@@ -252,8 +255,9 @@ branchesRouter.get(
       select bp.member_id as "memberId", bp.role,
              m.id, m.name, m.phone, m.email, m.role as "memberRole"
       from branch_pastors bp
-      join members m on m.id::text = bp.member_id
-      where bp.branch_id = ${id}
+      join members m on m.id = bp.member_id
+      where bp.branch_id = ${id}::uuid
+        and m.status = 'Active'
       order by m.name asc`;
     const data = rows.map((row) => ({
       memberId: row.memberId,
@@ -282,9 +286,21 @@ branchesRouter.post(
       return;
     }
     const { memberId, role } = parsed.data;
+    const [branch, member] = await Promise.all([
+      prisma.branch.findUnique({ where: { id } }),
+      prisma.member.findUnique({ where: { id: memberId } }),
+    ]);
+    if (!branch || !member) {
+      res.status(404).json(fail("Not found", "404", "Branch or member not found", buildMeta()));
+      return;
+    }
+    if (branch.status !== "Active" || member.status !== "Active") {
+      res.status(409).json(fail("Conflict", "409", "Only active branches and members can be assigned", buildMeta()));
+      return;
+    }
     const row = await prisma.$queryRaw<any[]>`
       insert into branch_pastors (branch_id, member_id, role)
-      values (${id}, ${memberId}, ${role})
+      values (${id}::uuid, ${memberId}::uuid, ${role})
       on conflict (branch_id, member_id) do update set role = excluded.role
       returning *`;
     res.json(ok(row[0], "Created", buildMeta()));
@@ -297,7 +313,11 @@ branchesRouter.delete(
   requirePermission("BRANCH_PASTOR_REMOVE"),
   async (req, res) => {
     const { id, memberId } = req.params;
-    await prisma.$executeRaw`delete from branch_pastors where branch_id = ${id} and member_id = ${memberId}`;
+    const removed = await prisma.$executeRaw`delete from branch_pastors where branch_id = ${id}::uuid and member_id = ${memberId}::uuid`;
+    if (!removed) {
+      res.status(404).json(fail("Not found", "404", "Pastor assignment not found", buildMeta()));
+      return;
+    }
     res.json(ok(null, "Removed", buildMeta()));
   }
 );

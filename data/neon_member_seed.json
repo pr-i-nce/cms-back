@@ -1,0 +1,1594 @@
+[
+  {
+    "name": "Judy Daniel",
+    "phone": "0701703930",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Adida Pilly",
+    "phone": "0100699066",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Inactive"
+  },
+  {
+    "name": "Anita Kitheka",
+    "phone": "0721883913",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Ann Kitheka",
+    "phone": "0722262836",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Bernice Ken",
+    "phone": "0707011447",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Catherine Katee",
+    "phone": "0729225648",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dorcas Dickson",
+    "phone": "0715166979",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Elizabeth Mwanza",
+    "phone": "0722728657",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Fridah Biko",
+    "phone": "0724005418",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Muthoni",
+    "phone": "0720123882",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Ndundu",
+    "phone": "0720208331",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Jacinta Thomas",
+    "phone": "07236414450",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Jackline Kioko",
+    "phone": "0721988809",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Janet Mutisya",
+    "phone": "0726065508",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Janice Steve",
+    "phone": "0720327429",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Jesse Wakoli",
+    "phone": "0742883674",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Koech Elvis",
+    "phone": "0728878440",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Leader",
+    "status": "Inactive"
+  },
+  {
+    "name": "Lilian Were",
+    "phone": "0712013442",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "lumbasi wabomba",
+    "phone": "0798109140",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Inactive"
+  },
+  {
+    "name": "Rachael Mwengi",
+    "phone": "0720711988",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ruth Nzuki",
+    "phone": "0798744825",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ruth Onesmas",
+    "phone": "07003353511",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "smith muuo",
+    "phone": "0743888464",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Susan Maithya",
+    "phone": "0700911491",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Terry Katee",
+    "phone": "0115971245",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Trizzer Mpararia",
+    "phone": "07203315514",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Alice Jacob",
+    "phone": "0702932419",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Damaris John",
+    "phone": "0715457103",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dorah Dishon",
+    "phone": "0742501100",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Edith Kioko",
+    "phone": "0729252568",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Edith Shadrack",
+    "phone": "072191776487",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Eunice Rayasi",
+    "phone": "0704498292",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Faith kanyaa",
+    "phone": "0727373628",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Gladwel Musembi",
+    "phone": "0710779418",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Charles",
+    "phone": "07044580852",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Kiteme",
+    "phone": "0729746249",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Mainga",
+    "phone": "0722627067",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Josephine Mwando",
+    "phone": "0737146756",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Joyce Caleb",
+    "phone": "0793981501",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Lilian Mwonga",
+    "phone": "0722585219",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Margret Nzili",
+    "phone": "0721843430",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mercy Kivui",
+    "phone": "0725840476",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mirriam Mutungi",
+    "phone": "0703233265",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mona Mwendwa",
+    "phone": "0710122155",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Nzugwa Syindu",
+    "phone": "0717686583",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Pauline Mbivya",
+    "phone": "0722501916",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Pauline Mutua",
+    "phone": "0792333845",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Rahab Wanjiku",
+    "phone": "0720569130",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ruth Kyalo",
+    "phone": "0714165389",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Scholasticah Mutua",
+    "phone": "0720265579",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Sharon Nicholas",
+    "phone": "0723536639",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Sheila David",
+    "phone": "0711174111",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Deborah Kamene",
+    "phone": "07212440721",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Edell Mpokeh",
+    "phone": "0722942564",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Elizabeth Fred",
+    "phone": "0748935795",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Eunice Joel",
+    "phone": "0792823250",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Finderis Musee",
+    "phone": "0724493732",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Glady Mutheu",
+    "phone": "0721364130",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Hellen Wambui",
+    "phone": "0728918945",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Henny Ngina",
+    "phone": "0780402153",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Jackline Mulonzi",
+    "phone": "0723564712",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Margaret Muthoni",
+    "phone": "0711920238",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mary Muli",
+    "phone": "0725150801",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mary Mumo",
+    "phone": "0700608575",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mbithe Roseline",
+    "phone": "0712180202",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mercy Antony",
+    "phone": "0704125581",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mercy Kyalo",
+    "phone": "0723634933",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Muthoni Koigi",
+    "phone": "0722164200",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Naomi Nyamai",
+    "phone": "0724545176",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Patricia Sammy",
+    "phone": "0712977458",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Patricia Sammy",
+    "phone": "0727884863",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Rose Ngoima",
+    "phone": "0722429212",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Rosephine Esther",
+    "phone": "0702641098",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ruth Festus",
+    "phone": "0723464712",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Sharon Mutune",
+    "phone": "07066564205",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Silvester Kioko",
+    "phone": "0769579988",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Syokau Joyce",
+    "phone": "0722806389",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Victor Nguli",
+    "phone": "0718767739",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ben Mulatya",
+    "phone": "0701594322",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "BONIFACE KIOKO",
+    "phone": "0728880906",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "THOMAS MAITHYA",
+    "phone": "0796386547",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "PAUL NZIOKI",
+    "phone": "072146052",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JOSPHAT KITHEKA",
+    "phone": "0727613773",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "DOMINIC MUMBU",
+    "phone": "0724445404",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ancent Mwendwa ",
+    "phone": "0717264736",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Ayub Elius",
+    "phone": "0797244483",
+    "gender": "Female",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Carolyne Kageni",
+    "phone": "0727803756",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Charles Ngui",
+    "phone": "0790541564",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Collins Nguli",
+    "phone": "0707221818",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Derrick Njenga",
+    "phone": "0112225208",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Dorcas Muema",
+    "phone": "07003206982",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dorica Musyoka",
+    "phone": "0742355073",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Emmanuel Wasike",
+    "phone": "0702170852",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Felix Mutiso",
+    "phone": "0740118054",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Fridah Muli",
+    "phone": "0721809539",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace Wamalwa",
+    "phone": "0758810336",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Joshua Lulu",
+    "phone": "0799865940",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Kim Shawn",
+    "phone": "0708781780",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Lilian Linet",
+    "phone": "0719816013",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Meshack Kyalo",
+    "phone": "0748961291",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mueni Macksembo",
+    "phone": "0722205014",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Philomena Namusole",
+    "phone": "0758872424",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Prince Mumo",
+    "phone": "0728241740",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Leader",
+    "status": "Active"
+  },
+  {
+    "name": "Teresia Ndanu",
+    "phone": "0746738090",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Victor Mwikya",
+    "phone": "0703622088",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SAMUEL OCHOLA",
+    "phone": "0711921077",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JOHN KIVUI",
+    "phone": "0724821778",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "ATHANAS MWANGANGI",
+    "phone": "0724552972",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JOHN KAVELE",
+    "phone": "0729362396",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SHADRACK MAILA",
+    "phone": "0713170311",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "EMMANUEL MUSEMBI",
+    "phone": "0726591588",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JOEL MULANDI",
+    "phone": "0719553028",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JACOB MULWA",
+    "phone": "0728485001",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "NICHOLAS KINYAMASYO",
+    "phone": "0715177053",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "REMMINGTONE MWARABU",
+    "phone": "0729832689",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "KINYAMASYO KANGWE",
+    "phone": "0721895417",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "KATHANGU MBWALU",
+    "phone": "0728175276",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "ABEL NTHULI",
+    "phone": "0722464276",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "ELIOUS MATUANGA",
+    "phone": "0706306738",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JOSEPH KATEE",
+    "phone": "0706874242",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SAMMY MUSYA",
+    "phone": "0722644785",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "TED MUNYOKI",
+    "phone": "0722321093",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "CALEB MULU",
+    "phone": "0714203001",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "EMMANUEL",
+    "phone": "0791014203",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SAMMY SYOMANE",
+    "phone": "0714266715",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "CHARLES MULATYA",
+    "phone": "0715220001",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SHEIKALFRED MWANZA",
+    "phone": "0725696611",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "TITUS MWANGI",
+    "phone": "0710821273",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "GODFREY MAITHYA",
+    "phone": "0722991770",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "STEVE BIKO",
+    "phone": "0704818867",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "WILLINGTON MWANZIA",
+    "phone": "0788217059",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "JULIUS MUSIA MUSYOKA",
+    "phone": "0729088083",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "DICKSON M MUTHUI",
+    "phone": "0710244782",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SAMUEL NZEGE",
+    "phone": "0717106496",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "ERIC MUENDO",
+    "phone": "0769060775",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "FESTUS NZUE",
+    "phone": "0719818341",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "SHADRACK KIOKO",
+    "phone": "0727476442",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "ALEX MUSEMBI",
+    "phone": "0713394265",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "BONIFACE ONYANGO",
+    "phone": "0712139713",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "MICHAEL MUTINDA",
+    "phone": "0740351158",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "FRED MWONGELA",
+    "phone": "0796939350",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "PATRICK NTHIANI",
+    "phone": "0723092039",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "STEPHEN KIMWELE",
+    "phone": "0722478409",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": " MWALILI MUSEE",
+    "phone": "0721329323",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Abigael Elious",
+    "phone": "0712663290",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Elijah Mulwa",
+    "phone": "0712943368",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mumo Kasamba",
+    "phone": "0723115777",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dancun Muasya",
+    "phone": "0757136769",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Paul Nzioki",
+    "phone": "0721464052",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Raphael Musyoka",
+    "phone": "0706109196",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Zebedayo Kisilu",
+    "phone": "0702773987",
+    "gender": "Male",
+    "department": "Men's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mellick Kasyoka",
+    "phone": "0707840518",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Henny Ngina",
+    "phone": "0708402153",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Caroline Jelimo",
+    "phone": "0706389943",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Hellen Mumbe Zakayo",
+    "phone": "0725357971",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Rose Sam",
+    "phone": "0741291683",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mirriam Mutungi",
+    "phone": "0703233465",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Catherine Kelvin",
+    "phone": "0725845973",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Christine Mutia",
+    "phone": "0796488472",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Noreen Mumo",
+    "phone": "0712062834",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Josphine Erastus",
+    "phone": "0725053072",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Esther James",
+    "phone": "0720791036",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Veronica Kimwele",
+    "phone": "0708647570",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Esther Mueni",
+    "phone": "0711308616",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Irene Kambua",
+    "phone": "0719278933",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Nancy Alex",
+    "phone": "0715793849",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Edith Sheddie",
+    "phone": "0791776487",
+    "gender": "Female",
+    "department": "Women's Fellowship",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Mercy Mwendwa",
+    "phone": "0795053151",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Victor Musembi",
+    "phone": "0706712444",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Gracia Mwikali",
+    "phone": "0745583214",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Judith Melick",
+    "phone": "0719273903",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Sharon Mueni",
+    "phone": "0741927114",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Stacy Murugi",
+    "phone": "0792928822",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dorica Musyoka",
+    "phone": "0742355075",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Angeline Soi",
+    "phone": "0115706565",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Jeniffer Kiio",
+    "phone": "0798378138",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Peter Nyaga",
+    "phone": "0111392629",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Joshua Ndavuta",
+    "phone": "0722822281",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Annah Kavinya",
+    "phone": "0704510420",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Trizah Ndanu",
+    "phone": "0746738091",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Martin Maluki",
+    "phone": "0715103399",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Zakayo",
+    "phone": "0797866595",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Judy",
+    "phone": "0793398294",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Grace",
+    "phone": "0757574894",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Dorah Mwikya",
+    "phone": "0742100501",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Zoeivy Wahito",
+    "phone": "0791352622",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Caroline Mutiso",
+    "phone": "0710404875",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Joel",
+    "phone": "+254741361204",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "David Caesar",
+    "phone": "+254708927082",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Purity Mung'athia",
+    "phone": "+254732247445",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Elijah Mumo",
+    "phone": "+254794278323",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Bernard Musembei",
+    "phone": "0705221559",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Elizabeth Musili",
+    "phone": "0726531526",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Anita Muema",
+    "phone": "0757173973",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Lilian Mwendwa",
+    "phone": "0700134876",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Jackline Wavinya",
+    "phone": "0748458405",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Morris Mulonzya",
+    "phone": "0719102194",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Rose Maingi",
+    "phone": "+254743790075",
+    "gender": "Female",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  },
+  {
+    "name": "Stanley Maingi",
+    "phone": "+254704629893",
+    "gender": "Male",
+    "department": "Youth Ministry",
+    "role": "Member",
+    "status": "Active"
+  }
+]

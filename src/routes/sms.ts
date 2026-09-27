@@ -24,6 +24,16 @@ const recipientTypeEnum = z.enum([
 ]);
 const categoryEnum = z.enum(["youth", "leaders", "new", "all"]);
 
+const isValidTimeToSend = (value: string) => {
+  if (/^\d{10}$/.test(value)) return Number(value) * 1000 > Date.now();
+  if (/^\d{13}$/.test(value)) return Number(value) > Date.now();
+  const localNairobiTime = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(value)
+    ? `${value.replace(" ", "T")}:00+03:00`
+    : value;
+  const timestamp = Date.parse(localNairobiTime);
+  return Number.isFinite(timestamp) && timestamp > Date.now();
+};
+
 const sendSchema = z.object({
   recipientType: recipientTypeEnum,
   recipientId: z.string().uuid().optional(),
@@ -34,7 +44,7 @@ const sendSchema = z.object({
   message: z.string().min(1).max(env.sms.messageMaxLength),
   personalize: z.boolean().optional(),
   sendMode: z.enum(["auto", "single", "bulk", "scheduled"]).optional(),
-  timeToSend: z.string().optional(),
+  timeToSend: z.string().trim().min(1).optional(),
 }).superRefine((data, ctx) => {
   const needsId = ["individual", "department", "committee"];
   if (needsId.includes(data.recipientType) && !data.recipientId) {
@@ -56,8 +66,8 @@ const sendSchema = z.object({
   if (data.customNumber && !/^[0-9+\s,]+$/.test(data.customNumber)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "customNumber has invalid characters" });
   }
-  if (data.timeToSend && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(data.timeToSend)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "timeToSend must be in YYYY-MM-DD HH:MM format" });
+  if (data.timeToSend && !isValidTimeToSend(data.timeToSend)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "timeToSend must be a valid future date, ISO date, or Unix timestamp" });
   }
 });
 
@@ -176,16 +186,20 @@ smsRouter.post(
   requireAuth,
   requirePermission("SMS_VIEW"),
   async (_req, res) => {
-    const result = await getBalance();
-    const credit =
-      result?.credit ??
-      result?.balance ??
-      result?.response?.credit ??
-      result?.response?.balance ??
-      result?.data?.credit ??
-      result?.data?.balance ??
-      null;
-    res.json(ok({ credit, raw: result }, "OK", buildMeta()));
+    try {
+      const result = await getBalance();
+      const credit =
+        result?.credit ??
+        result?.balance ??
+        result?.response?.credit ??
+        result?.response?.balance ??
+        result?.data?.credit ??
+        result?.data?.balance ??
+        null;
+      res.json(ok({ credit, raw: result }, "OK", buildMeta()));
+    } catch {
+      res.status(502).json(fail("Provider unavailable", "502", "Celcom balance request failed", buildMeta()));
+    }
   }
 );
 
@@ -199,7 +213,11 @@ smsRouter.post(
       res.status(400).json(fail("Invalid request", "400", "messageId is required", buildMeta()));
       return;
     }
-    const result = await getDeliveryReport(parsed.data.messageId);
-    res.json(ok(result, "OK", buildMeta()));
+    try {
+      const result = await getDeliveryReport(parsed.data.messageId);
+      res.json(ok(result, "OK", buildMeta()));
+    } catch {
+      res.status(502).json(fail("Provider unavailable", "502", "Celcom delivery report request failed", buildMeta()));
+    }
   }
 );
