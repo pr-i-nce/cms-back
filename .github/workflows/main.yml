@@ -2,8 +2,10 @@ name: Deploy CMS to cPanel
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
@@ -13,47 +15,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Build Project
+      - name: Build application
         run: |
-          npm install
-          # Generate client for Linux environment specifically
-          PRISMA_CLI_QUERY_ENGINE_TYPE=library npx prisma generate
+          npm ci
+          npx prisma generate
           npm run build
 
-      - name: Prepare Deployment Files
+      - name: Assemble cPanel deployment package
         run: |
-          mkdir -p deploy_package/tmp
-          cp -r dist deploy_package/
-          cp -r prisma deploy_package/
-          cp package.json deploy_package/
-          cp package-lock.json deploy_package/
-          
-          # IMPORTANT: We only copy the GENERATED Prisma client. 
-          # This allows the app to run without a full node_modules upload.
-          mkdir -p deploy_package/node_modules/@prisma
-          cp -r node_modules/@prisma/client deploy_package/node_modules/@prisma/
-          
-          echo "${{ secrets.DOT_ENV }}" > deploy_package/.env
-          touch deploy_package/tmp/restart.txt
+          mkdir -p deploy_package
+          cp -r dist prisma deploy_package/
+          cp app.js package.json package-lock.json deploy_package/
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Upload files over SFTP
+        uses: wangyucode/sftp-upload-action@v3
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT || 21 }}
-          local-dir: ./deploy_package/
-          server-dir: ./DWH-CMS_BACK/
-          # Set to true to ensure old 'real' node_modules folders are wiped
-          dangerous-clean-slate: true 
-          exclude: |
-            **/.git*
-            **/.git*/**
-            # We exclude node_modules EXCEPT the @prisma/client we manually copied
-            node_modules/!( @prisma )
+          host: ${{ secrets.SFTP_HOST }}
+          port: ${{ secrets.SFTP_PORT || 22 }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          privateKey: ${{ secrets.SFTP_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SFTP_PASSPHRASE }}
+          localDir: deploy_package
+          remoteDir: ${{ secrets.SFTP_REMOTE_DIR }}
+          concurrency: 4
