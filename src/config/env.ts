@@ -22,7 +22,7 @@ export const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "dev_refresh",
   jwtAccessTtl: process.env.JWT_ACCESS_TTL || "2h",
   jwtRefreshTtl: process.env.JWT_REFRESH_TTL || "7d",
-  corsOrigins: list(process.env.CORS_ORIGINS, ["http://localhost:8080", "http://localhost:5173", "https://cms.penielchristianchurchkitui.com/health"]),
+  corsOrigins: list(process.env.CORS_ORIGINS, ["http://localhost:8080", "http://localhost:5173"]),
   corsAllowedHeaders: list(
     process.env.CORS_ALLOWED_HEADERS,
     ["Content-Type", "Authorization", "X-CSRF-Token"]
