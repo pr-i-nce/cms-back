@@ -12,5 +12,5 @@ For an already-created legacy database, mark the baseline as applied once, then 
 For an empty database, run `npm run db:migrate:deploy`; Prisma executes the baseline and then the later migrations in order.
 
 The relational migration promotes the 199 existing member department assignments to primary assignments, adds foreign keys and duplicate-prevention constraints, and links leader accounts to members. It aborts without deleting data if it finds ambiguous/missing department references, orphaned links, or duplicate normalized contact details. Neon preflight found no such blockers; the migration and RBAC seed were applied on 2026-10-03. No member rows were removed.
-
+ok
 The RBAC seed creates 31 permission records, three roles, and three groups. The initial Super Admin user is provisioned separately; do not put its password in a migration or source file.
