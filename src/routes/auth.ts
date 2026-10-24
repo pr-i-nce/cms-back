@@ -171,8 +171,8 @@ authRouter.post("/login", async (req, res) => {
   const now = new Date().toISOString();
   const refreshHash = hashToken(refreshToken);
   await prisma.$executeRaw`
-    insert into refresh_tokens (user_id, token_hash, created_at, expires_at)
-    values (${user.id}::uuid, ${refreshHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
+    insert into refresh_tokens (id, user_id, token_hash, created_at, expires_at)
+    values (${randomUUID()}::uuid, ${user.id}::uuid, ${refreshHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
   `;
   res.cookie("access_token", accessToken, accessCookieOptions);
   res.cookie("refresh_token", refreshToken, refreshCookieOptions);
