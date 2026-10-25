@@ -51,7 +51,7 @@ jobs:
           local-dir: ./deploy_package/
           server-dir: ./DWH-CMS_BACK/
           # Set to true to ensure old 'real' node_modules folders are wiped
-          dangerous-clean-slate: true
+          dangerous-clean-slate: true 
           exclude: |
             **/.git*
             **/.git*/**
