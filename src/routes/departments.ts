@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db/client.js";
-import type { Department, Member } from "@prisma/client";
+import type { Department, Member } from "../generated/prisma/client.js";
 import { ok, fail } from "../utils/response.js";
 import { buildMeta } from "../utils/meta.js";
 import { requireAuth } from "../middleware/auth.js";

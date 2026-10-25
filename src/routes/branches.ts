@@ -6,7 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permission.js";
 import { z } from "zod";
 import { env } from "../config/env.js";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma/client.js";
 import { listQuerySchema, parseSort } from "../utils/query.js";
 
 export const branchesRouter = Router();

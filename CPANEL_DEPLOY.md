@@ -19,7 +19,7 @@ Set the Node.js application root in cPanel to the same directory as `SFTP_REMOTE
 
 In **Setup Node.js App**, choose production mode, set the app root, startup file (`app.js`), and configure the environment variables there. At minimum set `NODE_ENV=production`, `DATABASE_URL` to the Neon connection string, and strong unique `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values. Add the deployed frontend origin to `CORS_ORIGINS`. Do not commit or upload `.env` for production.
 
-After the first upload, use cPanel's **Run NPM Install** action for the app. Repeat it when `package.json` or `package-lock.json` changes. Use **Restart** in cPanel after each upload; cPanel may also restart when `tmp/restart.txt` is touched, but this SFTP workflow intentionally does not run remote shell commands.
+After the first upload, use cPanel's **Run NPM Install** action for the app. Repeat it when `package.json` or `package-lock.json` changes. Then use **Restart** in cPanel after each upload. The SFTP workflow uploads files only; it does not restart the app before new dependencies are installed.
 
 ## Database migrations
 

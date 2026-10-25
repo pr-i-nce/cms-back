@@ -1,8 +1,14 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../dist/generated/prisma/client.js";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+  connectionTimeoutMillis: 10_000,
+});
+const prisma = new PrismaClient({ adapter });
 
 const nowIso = () => new Date().toISOString();
 const createdBy = "seed_test_users";

@@ -10,7 +10,7 @@ import { ok } from "./utils/response.js";
 import { listSlow, recordSlow } from "./metrics/slowStore.js";
 import { getLatencyStats, listLatency, recordLatency } from "./metrics/latencyStore.js";
 import { prisma } from "./db/client.js";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "./generated/prisma/client.js";
 import { requireAuth } from "./middleware/auth.js";
 import { requirePermission } from "./middleware/permission.js";
 import { z } from "zod";
