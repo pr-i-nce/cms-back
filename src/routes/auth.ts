@@ -4,7 +4,7 @@ import { prisma } from "../db/client.js";
 import { ok, fail } from "../utils/response.js";
 import { buildMeta } from "../utils/meta.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
-import { resolvePermissions } from "../services/permissions.js";
+import { resolvePermissionContext, resolvePermissions } from "../services/permissions.js";
 import { requireAuth, AuthedRequest } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 import { randomUUID, createHash } from "crypto";
@@ -158,8 +158,8 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
   clearLoginFailures(attemptKey);
-  const groups = await prisma.userGroup.findMany({ where: { userId: user.id } });
-  if (!groups.length) {
+  const permissionContext = await resolvePermissionContext(user.id);
+  if (!permissionContext.hasGroups) {
     await logAuthEvent({ action: "LOGIN", success: false, reason: "NO_GROUP", email, req });
     res.status(403).json(fail("Forbidden", "403", "User has no group assigned", buildMeta()));
     return;
@@ -167,7 +167,7 @@ authRouter.post("/login", async (req, res) => {
   const csrfToken = randomUUID();
   const accessToken = signAccessToken(user.id, csrfToken);
   const refreshToken = signRefreshToken(user.id);
-  const permissions = await resolvePermissions(user.id);
+  const permissions = permissionContext.permissions;
   const now = new Date().toISOString();
   const refreshHash = hashToken(refreshToken);
   await prisma.$executeRaw`
@@ -200,41 +200,64 @@ authRouter.post("/refresh", async (req, res) => {
     res.status(400).json(fail("Invalid request", "400", "Refresh token required", buildMeta()));
     return;
   }
+  let payload: ReturnType<typeof verifyRefreshToken>;
   try {
-    const payload = verifyRefreshToken(refreshToken);
-    const tokenHash = hashToken(refreshToken);
-    const rows = await prisma.$queryRaw<{ user_id: string; expires_at: string; revoked_at: string | null }[]>`
+    payload = verifyRefreshToken(refreshToken);
+  } catch {
+    await logAuthEvent({ action: "REFRESH", success: false, reason: "INVALID_TOKEN", req });
+    res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+    return;
+  }
+
+  const tokenHash = hashToken(refreshToken);
+  let rows: { user_id: string; expires_at: string; revoked_at: string | null }[];
+  try {
+    rows = await prisma.$queryRaw<{ user_id: string; expires_at: string; revoked_at: string | null }[]>`
       select user_id, expires_at, revoked_at
       from refresh_tokens
       where token_hash = ${tokenHash}
       limit 1
     `;
-    const row = rows[0];
-    if (!row) {
-      await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_NOT_FOUND", req });
-      res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
-      return;
-    }
-    if (row.revoked_at) {
-      const now = new Date().toISOString();
+  } catch (error) {
+    console.error("Refresh token lookup failed", error instanceof Error ? error.name : "unknown");
+    res.status(503).json(fail("Unavailable", "503", "Session service is temporarily unavailable", buildMeta()));
+    return;
+  }
+
+  const row = rows[0];
+  if (!row) {
+    await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_NOT_FOUND", req });
+    res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+    return;
+  }
+  if (row.revoked_at) {
+    const now = new Date().toISOString();
+    try {
       await prisma.$executeRaw`
         update refresh_tokens set revoked_at = ${now}, last_used_at = ${now}
         where user_id = ${row.user_id}::uuid
       `;
-      await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_REUSE_DETECTED", req });
-      res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+    } catch (error) {
+      console.error("Refresh token reuse revocation failed", error instanceof Error ? error.name : "unknown");
+      res.status(503).json(fail("Unavailable", "503", "Session service is temporarily unavailable", buildMeta()));
       return;
     }
-    if (new Date(row.expires_at).getTime() <= Date.now()) {
-      await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_EXPIRED", req });
-      res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
-      return;
-    }
-    const csrfToken = randomUUID();
-    const accessToken = signAccessToken(payload.sub, csrfToken);
-    const newRefresh = signRefreshToken(payload.sub);
-    const now = new Date().toISOString();
-    const newHash = hashToken(newRefresh);
+    await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_REUSE_DETECTED", req });
+    res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+    return;
+  }
+  if (new Date(row.expires_at).getTime() <= Date.now()) {
+    await logAuthEvent({ action: "REFRESH", success: false, reason: "TOKEN_EXPIRED", req });
+    res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+    return;
+  }
+
+  const csrfToken = randomUUID();
+  const accessToken = signAccessToken(payload.sub, csrfToken);
+  const newRefresh = signRefreshToken(payload.sub);
+  const now = new Date().toISOString();
+  const newHash = hashToken(newRefresh);
+  try {
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         update refresh_tokens
@@ -242,23 +265,24 @@ authRouter.post("/refresh", async (req, res) => {
         where token_hash = ${tokenHash}
       `;
       await tx.$executeRaw`
-        insert into refresh_tokens (user_id, token_hash, created_at, expires_at)
-        values (${payload.sub}::uuid, ${newHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
+        insert into refresh_tokens (id, user_id, token_hash, created_at, expires_at)
+        values (${randomUUID()}::uuid, ${payload.sub}::uuid, ${newHash}, ${now}, ${new Date(Date.now() + refreshTtlMs).toISOString()})
       `;
     });
-    res.cookie("access_token", accessToken, accessCookieOptions);
-    res.cookie("refresh_token", newRefresh, refreshCookieOptions);
-    res.cookie("csrf_token", csrfToken, csrfCookieOptions);
-    res.json(ok({
-      csrfToken,
-      expiresIn: 7200,
-      expiresAt: new Date(Date.now() + 7200 * 1000).toISOString(),
-    }, "OK", buildMeta()));
-    await logAuthEvent({ action: "REFRESH", success: true, req });
-  } catch {
-    await logAuthEvent({ action: "REFRESH", success: false, reason: "INVALID_TOKEN", req });
-    res.status(401).json(fail("Invalid token", "401", "Refresh token invalid", buildMeta()));
+  } catch (error) {
+    console.error("Refresh token rotation failed", error instanceof Error ? error.name : "unknown");
+    res.status(503).json(fail("Unavailable", "503", "Session service is temporarily unavailable", buildMeta()));
+    return;
   }
+  res.cookie("access_token", accessToken, accessCookieOptions);
+  res.cookie("refresh_token", newRefresh, refreshCookieOptions);
+  res.cookie("csrf_token", csrfToken, csrfCookieOptions);
+  res.json(ok({
+    csrfToken,
+    expiresIn: 7200,
+    expiresAt: new Date(Date.now() + 7200 * 1000).toISOString(),
+  }, "OK", buildMeta()));
+  await logAuthEvent({ action: "REFRESH", success: true, req });
 });
 
 authRouter.post("/logout", async (req, res) => {

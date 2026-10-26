@@ -1,21 +1,28 @@
 import { env } from "../config/env.js";
 
 type LatencyEvent = {
+  environment: string;
   method: string;
   path: string;
   status: number;
   durationMs: number;
+  databaseDurationMs: number;
+  databaseQueryCount: number;
+  appDurationMs: number;
   timestamp: string;
 };
 
-const MAX_EVENTS = env.metrics.latencyMaxEvents;
+const MAX_EVENTS = Math.max(1, Math.floor(env.metrics.latencyMaxEvents));
 const events: LatencyEvent[] = [];
+let oldestEventIndex = 0;
 
 export const recordLatency = (event: LatencyEvent) => {
-  events.push(event);
-  if (events.length > MAX_EVENTS) {
-    events.shift();
+  if (events.length < MAX_EVENTS) {
+    events.push(event);
+    return;
   }
+  events[oldestEventIndex] = event;
+  oldestEventIndex = (oldestEventIndex + 1) % MAX_EVENTS;
 };
 
 const percentile = (values: number[], p: number) => {
@@ -44,4 +51,6 @@ export const getLatencyStats = () => {
   };
 };
 
-export const listLatency = () => [...events];
+export const listLatency = () => events.length < MAX_EVENTS
+  ? [...events]
+  : [...events.slice(oldestEventIndex), ...events.slice(0, oldestEventIndex)];

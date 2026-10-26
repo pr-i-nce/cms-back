@@ -257,6 +257,7 @@ departmentsRouter.post(
       },
     });
     invalidateCache("departments:");
+    invalidateCache("reports:");
     res.json(ok(dept, "Created", buildMeta()));
   }
 );
@@ -320,6 +321,7 @@ departmentsRouter.put(
     const updated = await prisma.department.update({ where: { id }, data });
     const [enrichedDepartment] = await addDepartmentLeaders([updated]);
     invalidateCache("departments:");
+    invalidateCache("reports:");
     res.json(ok(enrichedDepartment, "Updated", buildMeta()));
   }
 );
@@ -348,6 +350,7 @@ departmentsRouter.post(
       data: { status: "Inactive", lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
     });
     invalidateCache("departments:");
+    invalidateCache("reports:");
     res.json(ok(updated, "Deactivated", buildMeta()));
   }
 );
@@ -440,6 +443,7 @@ departmentsRouter.post(
       return tx.departmentMember.create({ data: { departmentId: id, memberId, role } });
     });
     invalidateCache("departments:");
+    invalidateCache("reports:");
     res.json(ok(assignment, "Created", buildMeta()));
   }
 );
@@ -463,6 +467,7 @@ departmentsRouter.delete(
       return;
     }
     invalidateCache("departments:");
+    invalidateCache("reports:");
     res.json(ok(null, "Removed", buildMeta()));
   }
 );

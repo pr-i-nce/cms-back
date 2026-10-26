@@ -234,14 +234,21 @@ model SmsRecord {
 }
 
 model LatencyLog {
-  id         String  @id @default(uuid()) @db.Uuid
-  source     String?
-  method     String?
-  path       String?
-  status     Int?
-  durationMs Int?    @map("duration_ms")
-  timestamp  String?
+  id                  String  @id @default(uuid()) @db.Uuid
+  source              String?
+  environment         String?
+  method              String?
+  path                String?
+  status              Int?
+  durationMs          Int?    @map("duration_ms")
+  databaseDurationMs  Int?    @map("database_duration_ms")
+  databaseQueryCount  Int?    @map("database_query_count")
+  appDurationMs       Int?    @map("app_duration_ms")
+  sampleCount         Int?    @map("sample_count")
+  maxDurationMs       Int?    @map("max_duration_ms")
+  timestamp           String?
 
+  @@index([source, timestamp], map: "latency_logs_source_timestamp_idx")
   @@map("latency_logs")
 }
 

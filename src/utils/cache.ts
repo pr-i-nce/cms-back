@@ -1,6 +1,9 @@
 type CacheEntry<T> = { expiresAt: number; value: T };
 
 const cache = new Map<string, CacheEntry<unknown>>();
+const inFlight = new Map<string, Promise<unknown>>();
+const MAX_CACHE_ENTRIES = 250;
+let cacheEpoch = 0;
 
 export const getCached = <T>(key: string): T | null => {
   const entry = cache.get(key);
@@ -18,13 +21,27 @@ export const setCached = <T>(key: string, value: T, ttlMs: number) => {
 
 export const cached = async <T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> => {
   const existing = getCached<T>(key);
-  if (existing) return existing;
-  const value = await loader();
-  setCached(key, value, ttlMs);
-  return value;
+  if (existing !== null) return existing;
+  const requestEpoch = cacheEpoch;
+  const flightKey = `${requestEpoch}:${key}`;
+  const pending = inFlight.get(flightKey);
+  if (pending) return pending as Promise<T>;
+
+  const load = Promise.resolve().then(loader).then((value) => {
+    if (requestEpoch === cacheEpoch) {
+      setCached(key, value, ttlMs);
+      while (cache.size > MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value as string);
+    }
+    return value;
+  }).finally(() => {
+    inFlight.delete(flightKey);
+  });
+  inFlight.set(flightKey, load);
+  return load;
 };
 
 export const invalidateCache = (keyPrefix?: string) => {
+  cacheEpoch += 1;
   if (!keyPrefix) {
     cache.clear();
     return;

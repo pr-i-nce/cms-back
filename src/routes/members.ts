@@ -9,13 +9,19 @@ import { env } from "../config/env.js";
 import { listQuerySchema, parseSort } from "../utils/query.js";
 import { normalizeEmail, normalizePhone } from "../utils/identity.js";
 import { invalidateAuthStatus } from "../middleware/auth.js";
+import { invalidateCache } from "../utils/cache.js";
 
 export const membersRouter = Router();
+
+const optionalEmailSchema = z.preprocess(
+  (value) => typeof value === "string" ? value.trim() || null : value,
+  z.string().email().nullable().optional(),
+);
 
 const createMemberSchema = z.object({
   name: z.string().trim().min(2),
   phone: z.string().trim().min(1),
-  email: z.string().email().optional().nullable(),
+  email: optionalEmailSchema,
   gender: z.string().trim().min(1),
   department: z.string().trim().min(1),
   role: z.string().trim().min(1),
@@ -25,7 +31,7 @@ const createMemberSchema = z.object({
 const updateMemberSchema = z.object({
   name: z.string().min(2).optional(),
   phone: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
+  email: optionalEmailSchema,
   gender: z.string().optional().nullable(),
   department: z.string().optional().nullable(),
   role: z.string().optional().nullable(),
@@ -178,6 +184,7 @@ membersRouter.post(
       });
       return created;
     });
+    invalidateCache("reports:");
     res.json(ok(member, "Created", buildMeta()));
   }
 );
@@ -302,6 +309,7 @@ membersRouter.put(
       }
       return updated;
     });
+    invalidateCache("reports:");
     res.json(ok(member, "Updated", buildMeta()));
   }
 );
@@ -337,6 +345,7 @@ membersRouter.delete(
       }
     });
     if (account) invalidateAuthStatus(account.id);
+    invalidateCache("reports:");
     res.json(ok(null, "Deactivated", buildMeta()));
   }
 );

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import { listQuerySchema, parseSort } from "../utils/query.js";
 import { resolvePermissions } from "../services/permissions.js";
+import { invalidateCache } from "../utils/cache.js";
 
 export const usersRouter = Router();
 
@@ -445,6 +446,7 @@ usersRouter.put(
         data: { lastEditedBy: actor, lastEditedAt: new Date().toISOString() },
       });
     });
+    invalidateCache(`permissions:user:${id}`);
     res.json(ok(null, "Updated", buildMeta()));
   }
 );

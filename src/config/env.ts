@@ -77,6 +77,7 @@ export const env = {
   },
   metrics: {
     slowThresholdMs: num(process.env.SLOW_REQUEST_THRESHOLD_MS, 150),
+    latencyPersistThresholdMs: num(process.env.LATENCY_PERSIST_THRESHOLD_MS, 500),
     slowMaxEvents: num(process.env.SLOW_REQUEST_MAX_EVENTS, 200),
     latencyMaxEvents: num(process.env.LATENCY_MAX_EVENTS, 2000),
   },

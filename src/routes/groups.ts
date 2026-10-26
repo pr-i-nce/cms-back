@@ -99,6 +99,7 @@ groupsRouter.put(
     data.lastEditedAt = new Date().toISOString();
     const group = await prisma.group.update({ where: { id }, data });
     invalidateCache("groups:");
+    invalidateCache("permissions:user:");
     res.json(ok(group, "Updated", buildMeta()));
   }
 );
@@ -137,6 +138,7 @@ groupsRouter.put(
       });
     });
     invalidateCache("groups:");
+    invalidateCache("permissions:user:");
     res.json(ok(null, "Updated", buildMeta()));
   }
 );

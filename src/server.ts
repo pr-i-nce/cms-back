@@ -1,3 +1,4 @@
+import "express-async-errors";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -28,6 +29,8 @@ import { smsRouter } from "./routes/sms.js";
 import { branchesRouter } from "./routes/branches.js";
 import { fail } from "./utils/response.js";
 import { listQuerySchema } from "./utils/query.js";
+import { runWithRequestPerformance } from "./metrics/requestContext.js";
+import { addLatencyIssue, drainLatencyIssueBuckets, restoreLatencyIssueBuckets } from "./metrics/issueBuffer.js";
 
 const app = express();
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -115,37 +118,84 @@ app.param("memberId", (req, res, next, value) => validateUuidParam("memberId")(v
 
 const uiLatencySchema = z.object({
   items: z.array(z.object({
-    path: z.string().min(1),
-    durationMs: z.number().int().min(0),
-    timestamp: z.string().min(1),
-  })).min(1),
+    path: z.string().min(1).max(300).startsWith("/"),
+    durationMs: z.number().int().min(0).max(60_000),
+    timestamp: z.string().min(1).max(40),
+  })).min(1).max(50),
 });
 
 app.use((req, res, next) => {
+  const performance = { databaseDurationMs: 0, databaseQueryCount: 0 };
   const start = process.hrtime.bigint();
-  res.on("finish", () => {
-    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
-    const event = {
-      method: req.method,
-      path: req.originalUrl,
-      status: res.statusCode,
-      durationMs: Math.round(durationMs),
-      timestamp: new Date().toISOString(),
-    };
-    recordLatency(event);
-    if (durationMs >= env.metrics.slowThresholdMs) {
-      recordSlow(event);
-    }
-    if (req.originalUrl.startsWith("/api/metrics") || req.originalUrl.startsWith("/health") || req.originalUrl.startsWith("/api/health")) {
-      return;
-    }
-    void prisma.$executeRaw`
-      insert into latency_logs (id, source, method, path, status, duration_ms, timestamp)
-      values (gen_random_uuid(), 'backend', ${event.method}, ${event.path}, ${event.status}, ${event.durationMs}, ${event.timestamp})
-    `.catch(() => {});
+  runWithRequestPerformance(performance, () => {
+    res.on("finish", () => {
+      const durationMs = Math.round(Number(process.hrtime.bigint() - start) / 1_000_000);
+      const databaseDurationMs = Math.round(performance.databaseDurationMs);
+      // Prisma query durations are cumulative. Concurrent queries may make this sum
+      // exceed wall time, so app time is a bounded estimate rather than a partition.
+      const appDurationMs = Math.max(0, durationMs - Math.min(durationMs, databaseDurationMs));
+      const routePath = req.originalUrl.split("?", 1)[0]
+        .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id")
+        .slice(0, 300);
+      const event = {
+        environment: env.nodeEnv,
+        method: req.method,
+        path: routePath,
+        status: res.statusCode,
+        durationMs,
+        databaseDurationMs,
+        databaseQueryCount: performance.databaseQueryCount,
+        appDurationMs,
+        timestamp: new Date().toISOString(),
+      };
+      recordLatency(event);
+      if (durationMs >= env.metrics.slowThresholdMs) {
+        recordSlow(event);
+      }
+      if (req.path.startsWith("/api/metrics") || req.path === "/health" || req.path === "/api/health") {
+        return;
+      }
+      if (durationMs < env.metrics.latencyPersistThresholdMs && res.statusCode < 500) {
+        return;
+      }
+      addLatencyIssue({ source: "backend", ...event });
+    });
+    next();
   });
-  next();
 });
+
+let latencyFlushInProgress = false;
+const flushLatencyIssueBatch = async () => {
+  if (latencyFlushInProgress) return;
+  const batch = drainLatencyIssueBuckets();
+  if (!batch.length) return;
+  latencyFlushInProgress = true;
+  try {
+    const values = batch.map((item) => Prisma.sql`(
+      gen_random_uuid(), ${item.source}, ${item.environment}, ${item.method}, ${item.path}, ${item.status},
+      ${Math.round(item.durationTotalMs / item.sampleCount)},
+      ${Math.round(item.databaseDurationTotalMs / item.sampleCount)},
+      ${Math.round(item.databaseQueryTotal / item.sampleCount)},
+      ${Math.round(item.appDurationTotalMs / item.sampleCount)},
+      ${item.sampleCount}, ${item.maxDurationMs}, ${item.timestamp}
+    )`);
+    await prisma.$executeRaw(Prisma.sql`
+      insert into latency_logs (
+        id, source, environment, method, path, status, duration_ms,
+        database_duration_ms, database_query_count, app_duration_ms,
+        sample_count, max_duration_ms, timestamp
+      ) values ${Prisma.join(values)}
+    `);
+  } catch {
+    // Telemetry is best-effort. Keep the bounded batch for a later retry.
+    restoreLatencyIssueBuckets(batch);
+  } finally {
+    latencyFlushInProgress = false;
+  }
+};
+
+const latencyFlushTimer = setInterval(() => void flushLatencyIssueBatch(), 60_000);
+latencyFlushTimer.unref();
 
 app.get("/health", (_req, res) => {
   res.json(ok({ status: "ok" }));
@@ -186,7 +236,14 @@ app.get("/api/metrics/requests", requireAuth, requirePermission("READ_ALL"), asy
     `;
     const total = Number(totalResult[0]?.count ?? 0);
     const items = await prisma.$queryRaw<any[]>`
-      select source, method, path, status, duration_ms as "durationMs", timestamp
+      select source, environment, method, path, status,
+        duration_ms as "durationMs",
+        database_duration_ms as "databaseDurationMs",
+        database_query_count as "databaseQueryCount",
+        app_duration_ms as "appDurationMs",
+        sample_count as "sampleCount",
+        max_duration_ms as "maxDurationMs",
+        timestamp
       from latency_logs
       where source = 'backend'
       order by timestamp desc
@@ -194,6 +251,7 @@ app.get("/api/metrics/requests", requireAuth, requirePermission("READ_ALL"), asy
     `;
     res.json(ok({
       thresholdMs: env.metrics.slowThresholdMs,
+      persistenceThresholdMs: env.metrics.latencyPersistThresholdMs,
       items,
       pagination: {
         page,
@@ -203,7 +261,11 @@ app.get("/api/metrics/requests", requireAuth, requirePermission("READ_ALL"), asy
       },
     }));
   } catch {
-    res.json(ok({ thresholdMs: env.metrics.slowThresholdMs, items: listLatency() }));
+    res.json(ok({
+      thresholdMs: env.metrics.slowThresholdMs,
+      persistenceThresholdMs: env.metrics.latencyPersistThresholdMs,
+      items: listLatency(),
+    }));
   }
 });
 
@@ -219,7 +281,8 @@ app.get("/api/metrics/ui-latency", requireAuth, requirePermission("READ_ALL"), a
   `;
   const total = Number(totalResult[0]?.count ?? 0);
   const items = await prisma.$queryRaw<any[]>`
-    select source, method, path, status, duration_ms as "durationMs", timestamp
+    select source, method, path, status, duration_ms as "durationMs",
+      sample_count as "sampleCount", max_duration_ms as "maxDurationMs", timestamp
     from latency_logs
     where source = 'ui'
     order by timestamp desc
@@ -237,23 +300,31 @@ app.get("/api/metrics/ui-latency", requireAuth, requirePermission("READ_ALL"), a
   }));
 });
 
-app.post("/api/metrics/ui-latency", requireAuth, async (req, res) => {
+app.post("/api/metrics/ui-latency", requireAuth, rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+}), async (req, res) => {
   const parsed = uiLatencySchema.safeParse(req.body || {});
   if (!parsed.success) {
     res.status(400).json(fail("Invalid request", "400", "Invalid UI latency payload"));
     return;
   }
-  const values = parsed.data.items.map((item) =>
-    Prisma.sql`(gen_random_uuid(), 'ui', 'NAV', ${item.path}, 200, ${item.durationMs}, ${item.timestamp})`
-  );
-  if (!values.length) {
-    res.json(ok({ stored: 0 }));
+  const issueItems = parsed.data.items.filter((item) => item.durationMs >= env.metrics.latencyPersistThresholdMs);
+  issueItems.forEach((item) => {
+    const path = item.path.split("?", 1)[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id");
+    addLatencyIssue({
+      source: "ui", environment: env.nodeEnv, method: "NAV", path, status: 200,
+      durationMs: item.durationMs, databaseDurationMs: 0, databaseQueryCount: 0,
+      appDurationMs: item.durationMs, timestamp: item.timestamp,
+    });
+  });
+  if (!issueItems.length) {
+    res.status(202).json(ok({ stored: 0, skipped: parsed.data.items.length }, "No slow UI events to persist"));
     return;
   }
-  await prisma.$executeRaw(
-    Prisma.sql`insert into latency_logs (id, source, method, path, status, duration_ms, timestamp) values ${Prisma.join(values)}`
-  );
-  res.json(ok({ stored: values.length }));
+  res.status(202).json(ok({ queued: issueItems.length, stored: 0 }, "Slow UI events queued for batch persistence"));
 });
 
 app.use((_req, res) => {
