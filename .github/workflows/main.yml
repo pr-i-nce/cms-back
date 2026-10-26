@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Prisma loads prisma.config.ts during install/generate; generation does not connect.
+      DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build_db
 
     steps:
       - name: Checkout repository
